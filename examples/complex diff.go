@@ -29,8 +29,10 @@ type ComplexStructDiff struct {
 
 	// Map of string to Metadata struct (nested)
 	Metadata struct {
-		Value map[string]models.MetadataDiff
-		Set   bool
+		Add map[string]models.Metadata
+		Del map[string]struct{}
+		Mod map[string]models.MetadataDiff
+		Set bool
 	}
 	// Nested struct defined inline
 	Inner struct {
@@ -39,12 +41,26 @@ type ComplexStructDiff struct {
 				Value string
 				Set   bool
 			}
-			Value int `structtomap:"value"`
+			Value struct {
+				Value int
+				Set   bool
+			}
 		}
 		Set bool
-	} `structtomap:"inner"`
-	// Pointer to a struct (may be nil)
-	Ref *models.User `structtomap:"ref"`
+	}
+	Ref struct {
+		Value *models.UserDiff
+		Set   bool
+	}
 	// Map of string to slice of strings
-	Categories map[string][]string `structtomap:"categories"`
+	Categories struct {
+		Add map[string][]string
+		Del map[string]struct{}
+		Set bool
+	}
+	UserCategories struct {
+		Add map[string][]models.UserDiff
+		Del map[string]struct{}
+		Set bool
+	}
 }

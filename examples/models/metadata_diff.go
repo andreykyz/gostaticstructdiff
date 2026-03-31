@@ -7,9 +7,9 @@ type MetadataDiff struct {
 		Set   bool
 	}
 	Values struct {
-		Add    map[string]string
-		Delete map[string]string
-		Set    bool
+		Add map[string]string
+		Del map[string]string
+		Set bool
 	}
 	Score struct {
 		Value *float64

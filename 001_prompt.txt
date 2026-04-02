@@ -1,0 +1,5 @@
+- you should create documentation for developing project with CLI utility named gostaticstructdiff 
+- Look at the folder examples there are structures and him _diff version.
+- gostaticstructdiff take go file look for structure (for example StructName)with static diff tag and  generate static strucrure named like StructNameDiff in file with _diff suffix
+- next feature of gostaticstructdiff generate StructNamePatch function that accepts original structure, new structure
+- next feature of gostaticstructdiff generate StructNamePatch function that accepts original structure, diff as input and retur patched structure as output.

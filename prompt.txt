@@ -1,0 +1,2 @@
+- look at the folder doc_for_ai
+- implement utility named gostaticstructdiff step by step

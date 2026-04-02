@@ -1,0 +1,87 @@
+// {{.Name}}Patch computes the diff between original and new {{.Name}}.
+func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
+	var diff {{.Name}}Diff
+{{- range .Fields}}
+	{{- if eq .Category "basic"}}
+	if original.{{.Name}} != new.{{.Name}} {
+		diff.{{.Name}}.Value = new.{{.Name}}
+		diff.{{.Name}}.Set = true
+	}
+	{{- else if eq .Category "pointer"}}
+	if (original.{{.Name}} == nil && new.{{.Name}} != nil) || (original.{{.Name}} != nil && new.{{.Name}} == nil) || (original.{{.Name}} != nil && new.{{.Name}} != nil && *original.{{.Name}} != *new.{{.Name}}) {
+		diff.{{.Name}}.Value = new.{{.Name}}
+		diff.{{.Name}}.Set = true
+	}
+	{{- else if eq .Category "slice"}}
+	// Slice comparison: simple length and element-wise equality (simplified)
+	if len(original.{{.Name}}) != len(new.{{.Name}}) {
+		diff.{{.Name}}.Value = new.{{.Name}}
+		diff.{{.Name}}.Set = true
+	} else {
+		for i := range original.{{.Name}} {
+			if original.{{.Name}}[i] != new.{{.Name}}[i] {
+				diff.{{.Name}}.Value = new.{{.Name}}
+				diff.{{.Name}}.Set = true
+				break
+			}
+		}
+	}
+	{{- else if eq .Category "map"}}
+	// Map diff: compute added and deleted keys
+	diff.{{.Name}}.Add = make(map[{{.KeyType}}]{{.ValueType}})
+	diff.{{.Name}}.Del = make(map[{{.KeyType}}]struct{})
+	// Added or modified keys
+	for k, v := range new.{{.Name}} {
+		oldV, ok := original.{{.Name}}[k]
+		if !ok || oldV != v {
+			diff.{{.Name}}.Add[k] = v
+		}
+	}
+	// Deleted keys
+	for k := range original.{{.Name}} {
+		if _, ok := new.{{.Name}}[k]; !ok {
+			diff.{{.Name}}.Del[k] = struct{}{}
+		}
+	}
+	if len(diff.{{.Name}}.Add) > 0 || len(diff.{{.Name}}.Del) > 0 {
+		diff.{{.Name}}.Set = true
+	}
+	{{- else if eq .Category "struct"}}
+	// Nested struct diff
+	nestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
+	diff.{{.Name}}.Value = nestedDiff
+	diff.{{.Name}}.Set = true // TODO: check if diff is empty
+	{{- end}}
+{{- end}}
+	return diff
+}
+
+// {{.Name}}Patch applies a diff to an original {{.Name}}.
+func {{.Name}}Patch(original {{.Name}}, diff {{.Name}}Diff) {{.Name}} {
+	result := original
+{{- range .Fields}}
+	if diff.{{.Name}}.Set {
+		{{- if eq .Category "basic"}}
+		result.{{.Name}} = diff.{{.Name}}.Value
+		{{- else if eq .Category "pointer"}}
+		result.{{.Name}} = diff.{{.Name}}.Value
+		{{- else if eq .Category "slice"}}
+		result.{{.Name}} = diff.{{.Name}}.Value
+		{{- else if eq .Category "map"}}
+		// Apply map diff
+		if result.{{.Name}} == nil {
+			result.{{.Name}} = make(map[{{.KeyType}}]{{.ValueType}})
+		}
+		for k, v := range diff.{{.Name}}.Add {
+			result.{{.Name}}[k] = v
+		}
+		for k := range diff.{{.Name}}.Del {
+			delete(result.{{.Name}}, k)
+		}
+		{{- else if eq .Category "struct"}}
+		result.{{.Name}} = {{.Type}}Patch(original.{{.Name}}, diff.{{.Name}}.Value)
+		{{- end}}
+	}
+{{- end}}
+	return result
+}

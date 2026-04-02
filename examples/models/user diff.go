@@ -10,8 +10,8 @@ type UserDiff struct {
 		Set   bool
 	}
 	Email struct {
-		string
-		Set bool
+		Value string
+		Set   bool
 	}
 	Active struct {
 		Value bool

@@ -8,74 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project structure and documentation
-- Example files demonstrating diff generation patterns
-- Comprehensive documentation suite
+- Initial implementation of the CLI tool
+- Support for basic types (int, string, bool, float64)
+- Support for pointer, slice, map, and nested struct fields
+- AST parser for extracting structs with `structtomap` tags
+- Type classification and diff strategy selection
+- Template-based code generation
+- Patch functions for computing and applying diffs
+- Example files demonstrating usage
+- Comprehensive documentation
 
-### Documentation
-- User guide with installation and usage instructions
-- Developer guide with architecture and contribution guidelines
-- API reference for generated code
-- Tutorial with step-by-step examples
-- Best practices for production usage
+### Changed
+- N/A
 
-## [0.1.0] - Planned
+### Deprecated
+- N/A
 
-### Features
-- Basic CLI tool implementation
-- Support for scalar types (int, string, bool, float64)
-- Support for pointer types
-- Support for slice types
-- Support for map types with basic operations
-- Support for nested structs
-- `go generate` integration
-- Basic error handling and validation
+### Removed
+- N/A
 
-### Documentation
-- Complete API documentation
-- More advanced examples
-- Performance benchmarking guide
+### Fixed
+- N/A
 
-## [0.2.0] - Planned
+### Security
+- N/A
 
-### Features
-- Support for embedded structs
-- Support for time.Time and other common types
-- Custom diff strategies via configuration
-- Improved map diff operations (Mod support)
-- Template customization options
-- Better error messages and diagnostics
+## [0.1.0] - 2026-04-02
 
-### Performance
-- Optimized diff computation
-- Reduced memory allocations
-- Parallel generation for multiple structs
+### Added
+- First release of `gostaticstructdiff`
+- Basic functionality as described above
 
-## [0.3.0] - Planned
-
-### Features
-- Plugin system for custom type handlers
-- JSON/protobuf serialization support for diffs
-- Validation function generation
-- Conflict resolution utilities
-- Advanced merge strategies
-
-### Tooling
-- IDE integration (VS Code, GoLand)
-- Pre-commit hooks
-- CI/CD templates
-- Docker images
-
-## [1.0.0] - Planned
-
-### Stability
-- Stable API with backward compatibility guarantees
-- Comprehensive test coverage (>90%)
-- Performance benchmarks for all operations
-- Security audit and vulnerability assessment
-
-### Ecosystem
-- Integration with popular Go frameworks
-- Community-contributed templates
-- Published to package registries
-- Official documentation website
+### Notes
+This is an initial alpha release. The tool is functional but may have limitations with complex nested structures. Feedback and contributions are welcome.

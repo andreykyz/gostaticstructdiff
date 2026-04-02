@@ -158,21 +158,6 @@ Two functions are generated:
 - **Memory usage**: Diff structs are 2-3x larger than original structs
 - **Zero allocations** for unchanged fields in patch operations
 
-## Requirements
-
-- Go 1.26 or later
-- No external dependencies for generated code
-
-## Contributing
-
-Contributions are welcome! Please see the [Contributing Guide](./CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -1,0 +1,24 @@
+// {{.Name}}Diff represents the diff of a {{.Name}} struct.
+type {{.Name}}Diff struct {
+{{- range .Fields}}
+	{{.Name}} struct {
+		{{- if eq .Category "basic"}}
+		Value {{.Type}}
+		Set   bool
+		{{- else if eq .Category "pointer"}}
+		Value {{.Type}}
+		Set   bool
+		{{- else if eq .Category "slice"}}
+		Value {{.Type}}
+		Set   bool
+		{{- else if eq .Category "map"}}
+		Add map[{{.KeyType}}]{{.ValueType}}
+		Del map[{{.KeyType}}]struct{}
+		Set bool
+		{{- else if eq .Category "struct"}}
+		Value {{.Type}}Diff
+		Set   bool
+		{{- end}}
+	}
+{{- end}}
+}

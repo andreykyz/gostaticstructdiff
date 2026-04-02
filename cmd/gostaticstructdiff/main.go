@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/andreykyz/gostaticstructdiff/internal/generator"
-	"github.com/andreykyz/gostaticstructdiff/internal/parser"
+	"github.com/andreykyz/gostaticstructdiff/generator"
+	"github.com/andreykyz/gostaticstructdiff/parser"
 )
 
 const version = "0.1.0"

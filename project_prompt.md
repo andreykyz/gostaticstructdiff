@@ -134,3 +134,42 @@ func ApplyUserDiff(original User, diff UserDiff) User {
 - All generated code should have zero runtime dependencies
 - Follow Go conventions and best practices
 - Maintain backward compatibility where possible
+
+## Commit Conventions for AI Agents
+When making changes to the codebase, AI agents should follow these commit message guidelines:
+
+### Commit Message Format
+```
+<50‑character imperative subject line>
+
+<72‑character wrapped body explaining "why" with issue references>
+```
+
+### Guidelines
+1. **Subject Line**: Use imperative mood (e.g., "Add", "Fix", "Update", "Remove") and keep under 50 characters
+2. **Blank Line**: Separate subject from body with a blank line
+3. **Body**: Explain the "why" behind the change, not just "what"
+   - Reference relevant issues (e.g., "Fixes #123", "Addresses #456")
+   - Wrap lines at 72 characters for readability
+   - Focus on the rationale and impact of the change
+4. **One Logical Change Per Commit**: Each commit should represent a single logical change
+   - Avoid mixing unrelated changes in one commit
+   - Keep commits focused and atomic
+
+### Example
+```
+Fix parser handling of embedded struct fields
+
+The parser was incorrectly skipping embedded structs without structtomap
+tags, causing missing fields in generated diff structs. This fix ensures
+embedded structs are properly processed while maintaining the requirement
+that at least one field has a structtomap tag.
+
+Fixes #42
+```
+
+### Best Practices
+- Test changes before committing
+- Ensure code compiles and tests pass
+- Update documentation when necessary
+- Follow the project's existing coding style

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/andreykyz/gostaticstructdiff/parser"
@@ -15,11 +16,12 @@ var templateFS embed.FS
 
 // FieldTemplateData holds data for a field in the template.
 type FieldTemplateData struct {
-	Name      string
-	Type      string
-	Category  string
-	KeyType   string
-	ValueType string
+	Name        string
+	Type        string
+	Category    string
+	KeyType     string
+	ValueType   string
+	IsAnonymous bool
 }
 
 // StructTemplateData holds data for a struct in the template.
@@ -81,11 +83,20 @@ func convertToTemplateData(s parser.StructInfo) StructTemplateData {
 	for _, f := range s.Fields {
 		typeInfo := types.Classify(f.TypeExpr)
 		category := typeInfo.Category.String()
+		isAnonymous := false
+
+		// Detect anonymous structs (type string starts with "struct {")
+		if typeInfo.Category == types.CategoryStruct && strings.HasPrefix(typeInfo.TypeString, "struct {") {
+			// Treat anonymous structs as basic (comparable) for simplicity
+			category = "basic"
+			isAnonymous = true
+		}
 
 		fieldData := FieldTemplateData{
-			Name:     f.Name,
-			Type:     f.Type,
-			Category: category,
+			Name:        f.Name,
+			Type:        f.Type,
+			Category:    category,
+			IsAnonymous: isAnonymous,
 		}
 
 		// For map types, extract key and value types

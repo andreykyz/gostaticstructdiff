@@ -115,10 +115,31 @@ func exprToString(expr ast.Expr) string {
 	case *ast.SelectorExpr:
 		return exprToString(t.X) + "." + t.Sel.Name
 	case *ast.StructType:
-		// Nested anonymous struct - we'll represent as "struct{...}"
-		return "struct{...}"
+		return structTypeToString(t)
 	default:
 		// Fallback
 		return "unknown"
 	}
+}
+
+// structTypeToString converts an ast.StructType to a string representation.
+func structTypeToString(st *ast.StructType) string {
+	if st.Fields == nil || len(st.Fields.List) == 0 {
+		return "struct{}"
+	}
+	var parts []string
+	for _, field := range st.Fields.List {
+		// Get field type
+		typ := exprToString(field.Type)
+		// Handle field names
+		if field.Names == nil {
+			// Embedded field (anonymous)
+			parts = append(parts, typ)
+		} else {
+			for _, name := range field.Names {
+				parts = append(parts, name.Name+" "+typ)
+			}
+		}
+	}
+	return "struct { " + strings.Join(parts, "; ") + " }"
 }

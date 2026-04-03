@@ -1,0 +1,4 @@
+- build gostaticstructdiff
+- generate diff for examples/complex.go
+- add example which use diff/patch in examples/cmd/main.go
+- run examples/cmd/main.go and check that it works

@@ -2,6 +2,7 @@ package types
 
 import (
 	"go/ast"
+	"strings"
 )
 
 // Category represents the classification of a Go type.
@@ -103,7 +104,7 @@ func Classify(expr ast.Expr) *TypeInfo {
 		// Anonymous struct
 		return &TypeInfo{
 			Category:   CategoryStruct,
-			TypeString: "struct{...}",
+			TypeString: exprToString(expr),
 		}
 	default:
 		// Fallback
@@ -150,12 +151,34 @@ func exprToString(expr ast.Expr) string {
 	case *ast.SelectorExpr:
 		return exprToString(t.X) + "." + t.Sel.Name
 	case *ast.StructType:
-		return "struct{...}"
+		return structTypeToString(t)
 	case *ast.BasicLit:
 		return t.Value
 	default:
 		return "unknown"
 	}
+}
+
+// structTypeToString converts an ast.StructType to a string representation.
+func structTypeToString(st *ast.StructType) string {
+	if st.Fields == nil || len(st.Fields.List) == 0 {
+		return "struct{}"
+	}
+	var parts []string
+	for _, field := range st.Fields.List {
+		// Get field type
+		typ := exprToString(field.Type)
+		// Handle field names
+		if field.Names == nil {
+			// Embedded field (anonymous)
+			parts = append(parts, typ)
+		} else {
+			for _, name := range field.Names {
+				parts = append(parts, name.Name+" "+typ)
+			}
+		}
+	}
+	return "struct { " + strings.Join(parts, "; ") + " }"
 }
 
 // DiffStrategy defines the structure of a diff field for a given type.

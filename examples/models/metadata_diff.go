@@ -1,6 +1,6 @@
 package models
 
-// Metadata represents additional key‑value data with mixed types.
+// MetadataDiff represents the diff of a Metadata struct.
 type MetadataDiff struct {
 	Label struct {
 		Value string
@@ -8,7 +8,7 @@ type MetadataDiff struct {
 	}
 	Values struct {
 		Add map[string]string
-		Del map[string]string
+		Del map[string]struct{}
 		Set bool
 	}
 	Score struct {
@@ -16,16 +16,72 @@ type MetadataDiff struct {
 		Set   bool
 	}
 	Extra struct {
-		Value struct {
-			Note struct {
-				Value string
-				Set   bool
-			}
-			Cost struct {
-				Value float64
-				Set   bool
-			}
-		}
-		Set bool
+		Value struct { Note string; Cost float64 }
+		Set   bool
 	}
 }
+
+// MetadataPatch computes the diff between original and new Metadata.
+func MetadataPatch(original, new Metadata) MetadataDiff {
+	var diff MetadataDiff
+	if original.Label != new.Label {
+		diff.Label.Value = new.Label
+		diff.Label.Set = true
+	}
+	// Map diff: compute added and deleted keys
+	diff.Values.Add = make(map[string]string)
+	diff.Values.Del = make(map[string]struct{})
+	// Added or modified keys
+	for k, v := range new.Values {
+		oldV, ok := original.Values[k]
+		if !ok || oldV != v {
+			diff.Values.Add[k] = v
+		}
+	}
+	// Deleted keys
+	for k := range original.Values {
+		if _, ok := new.Values[k]; !ok {
+			diff.Values.Del[k] = struct{}{}
+		}
+	}
+	if len(diff.Values.Add) > 0 || len(diff.Values.Del) > 0 {
+		diff.Values.Set = true
+	}
+	if (original.Score == nil && new.Score != nil) || (original.Score != nil && new.Score == nil) || (original.Score != nil && new.Score != nil && *original.Score != *new.Score) {
+		diff.Score.Value = new.Score
+		diff.Score.Set = true
+	}
+	if original.Extra != new.Extra {
+		diff.Extra.Value = new.Extra
+		diff.Extra.Set = true
+	}
+	return diff
+}
+
+// ApplyMetadataDiff applies a diff to an original Metadata.
+func ApplyMetadataDiff(original Metadata, diff MetadataDiff) Metadata {
+	result := original
+	if diff.Label.Set {
+		result.Label = diff.Label.Value
+	}
+	if diff.Values.Set {
+		// Apply map diff
+		if result.Values == nil {
+			result.Values = make(map[string]string)
+		}
+		for k, v := range diff.Values.Add {
+			result.Values[k] = v
+		}
+		for k := range diff.Values.Del {
+			delete(result.Values, k)
+		}
+	}
+	if diff.Score.Set {
+		result.Score = diff.Score.Value
+	}
+	if diff.Extra.Set {
+		result.Extra = diff.Extra.Value
+	}
+	return result
+}
+

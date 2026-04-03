@@ -38,6 +38,35 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string)
 		return "", fmt.Errorf("failed to load templates: %w", err)
 	}
 
+	// Determine if we need reflect import
+	needsReflect := false
+	for _, s := range structs {
+		for _, f := range s.Fields {
+			typeInfo := types.Classify(f.TypeExpr)
+			if typeInfo.Category == types.CategorySlice || typeInfo.Category == types.CategoryMap {
+				needsReflect = true
+				break
+			}
+		}
+		if needsReflect {
+			break
+		}
+	}
+
+	// Add reflect import if needed and not already present
+	if needsReflect {
+		hasReflect := false
+		for _, imp := range imports {
+			if imp == "reflect" {
+				hasReflect = true
+				break
+			}
+		}
+		if !hasReflect {
+			imports = append(imports, "reflect")
+		}
+	}
+
 	// Prepare data for each struct
 	var output bytes.Buffer
 

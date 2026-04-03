@@ -1,0 +1,62 @@
+package models
+
+// UserDiff represents the diff of a User struct.
+type UserDiff struct {
+	ID struct {
+		Value int
+		Set   bool
+	}
+	Username struct {
+		Value string
+		Set   bool
+	}
+	Email struct {
+		Value string
+		Set   bool
+	}
+	Active struct {
+		Value bool
+		Set   bool
+	}
+}
+
+// UserPatch computes the diff between original and new User.
+func UserPatch(original, new User) UserDiff {
+	var diff UserDiff
+	if original.ID != new.ID {
+		diff.ID.Value = new.ID
+		diff.ID.Set = true
+	}
+	if original.Username != new.Username {
+		diff.Username.Value = new.Username
+		diff.Username.Set = true
+	}
+	if original.Email != new.Email {
+		diff.Email.Value = new.Email
+		diff.Email.Set = true
+	}
+	if original.Active != new.Active {
+		diff.Active.Value = new.Active
+		diff.Active.Set = true
+	}
+	return diff
+}
+
+// ApplyUserDiff applies a diff to an original User.
+func ApplyUserDiff(original User, diff UserDiff) User {
+	result := original
+	if diff.ID.Set {
+		result.ID = diff.ID.Value
+	}
+	if diff.Username.Set {
+		result.Username = diff.Username.Value
+	}
+	if diff.Email.Set {
+		result.Email = diff.Email.Value
+	}
+	if diff.Active.Set {
+		result.Active = diff.Active.Value
+	}
+	return result
+}
+

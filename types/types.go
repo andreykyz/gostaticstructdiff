@@ -168,13 +168,18 @@ func structTypeToString(st *ast.StructType) string {
 	for _, field := range st.Fields.List {
 		// Get field type
 		typ := exprToString(field.Type)
+		// Get tag if present
+		var tag string
+		if field.Tag != nil {
+			tag = " " + field.Tag.Value
+		}
 		// Handle field names
 		if field.Names == nil {
 			// Embedded field (anonymous)
-			parts = append(parts, typ)
+			parts = append(parts, typ+tag)
 		} else {
 			for _, name := range field.Names {
-				parts = append(parts, name.Name+" "+typ)
+				parts = append(parts, name.Name+" "+typ+tag)
 			}
 		}
 	}

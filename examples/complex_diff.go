@@ -1,0 +1,174 @@
+package examples
+
+import (
+	"github.com/andreykyz/gostaticstructdiff/examples/models"
+	"reflect"
+)
+
+// ComplexStructDiff represents the diff of a ComplexStruct struct.
+type ComplexStructDiff struct {
+	Name struct {
+		Value string
+		Set   bool
+	}
+	Count struct {
+		Value int
+		Set   bool
+	}
+	Active struct {
+		Value bool
+		Set   bool
+	}
+	Tags struct {
+		Value []string
+		Set   bool
+	}
+	Users struct {
+		Value []models.User
+		Set   bool
+	}
+	Metadata struct {
+		Add map[string]models.Metadata
+		Del map[string]struct{}
+		Set bool
+	}
+	Inner struct {
+		Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` }
+		Set   bool
+	}
+	Ref struct {
+		Value *models.User
+		Set   bool
+	}
+	Categories struct {
+		Add map[string][]string
+		Del map[string]struct{}
+		Set bool
+	}
+}
+
+// ComplexStructPatch computes the diff between original and new ComplexStruct.
+func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
+	var diff ComplexStructDiff
+	if original.Name != new.Name {
+		diff.Name.Value = new.Name
+		diff.Name.Set = true
+	}
+	if original.Count != new.Count {
+		diff.Count.Value = new.Count
+		diff.Count.Set = true
+	}
+	if original.Active != new.Active {
+		diff.Active.Value = new.Active
+		diff.Active.Set = true
+	}
+	// Slice comparison using reflect.DeepEqual
+	if !reflect.DeepEqual(original.Tags, new.Tags) {
+		diff.Tags.Value = new.Tags
+		diff.Tags.Set = true
+	}
+	// Slice comparison using reflect.DeepEqual
+	if !reflect.DeepEqual(original.Users, new.Users) {
+		diff.Users.Value = new.Users
+		diff.Users.Set = true
+	}
+	// Map diff: compute added and deleted keys
+	diff.Metadata.Add = make(map[string]models.Metadata)
+	diff.Metadata.Del = make(map[string]struct{})
+	// Added or modified keys
+	for k, v := range new.Metadata {
+		oldV, ok := original.Metadata[k]
+		if !ok || !reflect.DeepEqual(oldV, v) {
+			diff.Metadata.Add[k] = v
+		}
+	}
+	// Deleted keys
+	for k := range original.Metadata {
+		if _, ok := new.Metadata[k]; !ok {
+			diff.Metadata.Del[k] = struct{}{}
+		}
+	}
+	if len(diff.Metadata.Add) > 0 || len(diff.Metadata.Del) > 0 {
+		diff.Metadata.Set = true
+	}
+	if original.Inner != new.Inner {
+		diff.Inner.Value = new.Inner
+		diff.Inner.Set = true
+	}
+	if (original.Ref == nil && new.Ref != nil) || (original.Ref != nil && new.Ref == nil) || (original.Ref != nil && new.Ref != nil && *original.Ref != *new.Ref) {
+		diff.Ref.Value = new.Ref
+		diff.Ref.Set = true
+	}
+	// Map diff: compute added and deleted keys
+	diff.Categories.Add = make(map[string][]string)
+	diff.Categories.Del = make(map[string]struct{})
+	// Added or modified keys
+	for k, v := range new.Categories {
+		oldV, ok := original.Categories[k]
+		if !ok || !reflect.DeepEqual(oldV, v) {
+			diff.Categories.Add[k] = v
+		}
+	}
+	// Deleted keys
+	for k := range original.Categories {
+		if _, ok := new.Categories[k]; !ok {
+			diff.Categories.Del[k] = struct{}{}
+		}
+	}
+	if len(diff.Categories.Add) > 0 || len(diff.Categories.Del) > 0 {
+		diff.Categories.Set = true
+	}
+	return diff
+}
+
+// ApplyComplexStructDiff applies a diff to an original ComplexStruct.
+func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) ComplexStruct {
+	result := original
+	if diff.Name.Set {
+		result.Name = diff.Name.Value
+	}
+	if diff.Count.Set {
+		result.Count = diff.Count.Value
+	}
+	if diff.Active.Set {
+		result.Active = diff.Active.Value
+	}
+	if diff.Tags.Set {
+		result.Tags = diff.Tags.Value
+	}
+	if diff.Users.Set {
+		result.Users = diff.Users.Value
+	}
+	if diff.Metadata.Set {
+		// Apply map diff
+		if result.Metadata == nil {
+			result.Metadata = make(map[string]models.Metadata)
+		}
+		for k, v := range diff.Metadata.Add {
+			result.Metadata[k] = v
+		}
+		for k := range diff.Metadata.Del {
+			delete(result.Metadata, k)
+		}
+	}
+	if diff.Inner.Set {
+		result.Inner = diff.Inner.Value
+	}
+	if diff.Ref.Set {
+		result.Ref = diff.Ref.Value
+	}
+	if diff.Categories.Set {
+		// Apply map diff
+		if result.Categories == nil {
+			result.Categories = make(map[string][]string)
+		}
+		for k, v := range diff.Categories.Add {
+			result.Categories[k] = v
+		}
+		for k := range diff.Categories.Del {
+			delete(result.Categories, k)
+		}
+	}
+	return result
+}
+

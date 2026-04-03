@@ -22,12 +22,12 @@ type StructInfo struct {
 }
 
 // ParseFile parses a Go file and returns all structs that have at least one field
-// with a `structtomap` tag.
-func ParseFile(filename string) ([]StructInfo, error) {
+// with a `structtomap` tag, along with the file's imports.
+func ParseFile(filename string) ([]StructInfo, []string, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var structs []StructInfo
@@ -56,7 +56,18 @@ func ParseFile(filename string) ([]StructInfo, error) {
 		return true
 	})
 
-	return structs, nil
+	// Collect imports
+	importSet := make(map[string]bool)
+	for _, imp := range node.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		importSet[path] = true
+	}
+	imports := make([]string, 0, len(importSet))
+	for imp := range importSet {
+		imports = append(imports, imp)
+	}
+
+	return structs, imports, nil
 }
 
 // extractFields extracts fields from a struct type that have structtomap tags.
@@ -131,13 +142,18 @@ func structTypeToString(st *ast.StructType) string {
 	for _, field := range st.Fields.List {
 		// Get field type
 		typ := exprToString(field.Type)
+		// Get tag if present
+		var tag string
+		if field.Tag != nil {
+			tag = " " + field.Tag.Value
+		}
 		// Handle field names
 		if field.Names == nil {
 			// Embedded field (anonymous)
-			parts = append(parts, typ)
+			parts = append(parts, typ+tag)
 		} else {
 			for _, name := range field.Names {
-				parts = append(parts, name.Name+" "+typ)
+				parts = append(parts, name.Name+" "+typ+tag)
 			}
 		}
 	}

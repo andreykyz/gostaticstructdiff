@@ -13,18 +13,10 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 		diff.{{.Name}}.Set = true
 	}
 	{{- else if eq .Category "slice"}}
-	// Slice comparison: simple length and element-wise equality (simplified)
-	if len(original.{{.Name}}) != len(new.{{.Name}}) {
+	// Slice comparison using reflect.DeepEqual
+	if !reflect.DeepEqual(original.{{.Name}}, new.{{.Name}}) {
 		diff.{{.Name}}.Value = new.{{.Name}}
 		diff.{{.Name}}.Set = true
-	} else {
-		for i := range original.{{.Name}} {
-			if original.{{.Name}}[i] != new.{{.Name}}[i] {
-				diff.{{.Name}}.Value = new.{{.Name}}
-				diff.{{.Name}}.Set = true
-				break
-			}
-		}
 	}
 	{{- else if eq .Category "map"}}
 	// Map diff: compute added and deleted keys
@@ -33,7 +25,7 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 	// Added or modified keys
 	for k, v := range new.{{.Name}} {
 		oldV, ok := original.{{.Name}}[k]
-		if !ok || oldV != v {
+		if !ok || !reflect.DeepEqual(oldV, v) {
 			diff.{{.Name}}.Add[k] = v
 		}
 	}

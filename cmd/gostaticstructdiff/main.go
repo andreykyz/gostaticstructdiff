@@ -71,7 +71,7 @@ func main() {
 // processFile reads the input file, parses structs, generates diff code, and writes to output.
 func processFile(inputFile, outputFile, structName string, verbose bool) error {
 	// Parse the input file
-	structs, err := parser.ParseFile(inputFile)
+	structs, imports, err := parser.ParseFile(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to parse input file: %w", err)
 	}
@@ -106,10 +106,7 @@ func processFile(inputFile, outputFile, structName string, verbose bool) error {
 		return fmt.Errorf("failed to determine package name: %w", err)
 	}
 
-	// Determine imports (for now empty)
-	imports := []string{}
-
-	// Generate code
+	// Generate code (imports are passed from the parsed file)
 	code, err := generator.Generate(structs, packageName, imports)
 	if err != nil {
 		return fmt.Errorf("failed to generate code: %w", err)

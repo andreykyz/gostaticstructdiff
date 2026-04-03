@@ -22,7 +22,7 @@ type User struct {
 		t.Fatal(err)
 	}
 
-	structs, err := ParseFile(tmpFile)
+	structs, _, err := ParseFile(tmpFile)
 	if err != nil {
 		t.Fatalf("ParseFile failed: %v", err)
 	}
@@ -76,7 +76,7 @@ type Foo struct {
 		t.Fatal(err)
 	}
 
-	structs, err := ParseFile(tmpFile)
+	structs, _, err := ParseFile(tmpFile)
 	if err != nil {
 		t.Fatalf("ParseFile failed: %v", err)
 	}
@@ -102,7 +102,7 @@ type B struct {
 		t.Fatal(err)
 	}
 
-	structs, err := ParseFile(tmpFile)
+	structs, _, err := ParseFile(tmpFile)
 	if err != nil {
 		t.Fatalf("ParseFile failed: %v", err)
 	}
@@ -120,7 +120,7 @@ type B struct {
 }
 
 func TestParseFile_InvalidFile(t *testing.T) {
-	_, err := ParseFile("nonexistent.go")
+	_, _, err := ParseFile("nonexistent.go")
 	if err == nil {
 		t.Error("expected error for nonexistent file")
 	}

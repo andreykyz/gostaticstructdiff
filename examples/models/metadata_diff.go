@@ -1,5 +1,9 @@
 package models
 
+import (
+	"reflect"
+)
+
 // MetadataDiff represents the diff of a Metadata struct.
 type MetadataDiff struct {
 	Label struct {
@@ -16,7 +20,7 @@ type MetadataDiff struct {
 		Set   bool
 	}
 	Extra struct {
-		Value struct { Note string; Cost float64 }
+		Value struct { Note string `structtomap:"note"`; Cost float64 `structtomap:"cost"` }
 		Set   bool
 	}
 }
@@ -34,7 +38,7 @@ func MetadataPatch(original, new Metadata) MetadataDiff {
 	// Added or modified keys
 	for k, v := range new.Values {
 		oldV, ok := original.Values[k]
-		if !ok || oldV != v {
+		if !ok || !reflect.DeepEqual(oldV, v) {
 			diff.Values.Add[k] = v
 		}
 	}

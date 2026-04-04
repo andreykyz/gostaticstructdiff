@@ -21,6 +21,28 @@ type StructInfo struct {
 	Fields []FieldInfo
 }
 
+// TagValue extracts the value of a structtomap tag from a tag string.
+// Returns empty string if not found.
+func TagValue(tag string) string {
+	// Find structtomap:"value"
+	key := "structtomap:"
+	idx := strings.Index(tag, key)
+	if idx == -1 {
+		return ""
+	}
+	rest := tag[idx+len(key):]
+	// Find opening quote
+	start := strings.Index(rest, `"`)
+	if start == -1 {
+		return ""
+	}
+	end := strings.Index(rest[start+1:], `"`)
+	if end == -1 {
+		return ""
+	}
+	return rest[start+1 : start+1+end]
+}
+
 // ParseFile parses a Go file and returns all structs that have at least one field
 // with a `structtomap` tag, along with the file's imports.
 func ParseFile(filename string) ([]StructInfo, []string, error) {

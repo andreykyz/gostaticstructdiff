@@ -4,10 +4,14 @@
 BINARY_NAME := gostaticstructdiff
 EXAMPLES_DIR := examples
 MODELS_DIR := $(EXAMPLES_DIR)/models
-GENERATED_DIFFS := \
+GENERATED_EXAMPLE_DIFFS := \
 	$(EXAMPLES_DIR)/complex_diff.go \
 	$(MODELS_DIR)/user_diff.go \
 	$(MODELS_DIR)/metadata_diff.go
+
+CLUSTER_MODEL_FILES := \
+	$(MODELS_DIR)/cluster.go \
+	$(MODELS_DIR)/node.go
 
 # Default target
 all: build
@@ -21,14 +25,19 @@ build:
 clean:
 	@echo "Cleaning..."
 	rm -f $(BINARY_NAME)
-	rm -f $(GENERATED_DIFFS)
+	rm -f $(GENERATED_EXAMPLE_DIFFS)
 
 # Generate diff files for examples
-generate: build
+generate_example: build
 	@echo "Generating diff files..."
 	./$(BINARY_NAME) -input $(EXAMPLES_DIR)/complex.go -verbose
 	./$(BINARY_NAME) -input $(MODELS_DIR)/user.go -verbose
 	./$(BINARY_NAME) -input $(MODELS_DIR)/metadata.go -verbose
+
+generate_cluster_example:
+	@echo "Generating diff files..."
+	./$(BINARY_NAME) -input cluster_model/cluster.go -verbose -tagvalue=mapstructure
+	./$(BINARY_NAME) -input cluster_model/node.go -verbose -tagvalue=mapstructure
 
 # Run tests
 test:
@@ -36,7 +45,7 @@ test:
 	go test ./...
 
 # Run the example program
-example: generate
+example: generate_example
 	@echo "Running example..."
 	cd $(EXAMPLES_DIR)/cmd && go run main.go
 

@@ -26,7 +26,7 @@ func TestGenerate_SimpleStruct(t *testing.T) {
 		},
 	}
 
-	code, err := Generate([]parser.StructInfo{si}, "models", nil)
+	code, err := Generate([]parser.StructInfo{si}, "models", nil, "0.1.0")
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestGenerate_SimpleStruct(t *testing.T) {
 }
 
 func TestGenerate_EmptyStructs(t *testing.T) {
-	code, err := Generate([]parser.StructInfo{}, "empty", nil)
+	code, err := Generate([]parser.StructInfo{}, "empty", nil, "0.1.0")
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestGenerate_WithImports(t *testing.T) {
 		},
 	}
 	imports := []string{"fmt", "time"}
-	code, err := Generate([]parser.StructInfo{si}, "pkg", imports)
+	code, err := Generate([]parser.StructInfo{si}, "pkg", imports, "0.1.0")
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}

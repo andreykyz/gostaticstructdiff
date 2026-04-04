@@ -107,7 +107,7 @@ func processFile(inputFile, outputFile, structName string, verbose bool) error {
 	}
 
 	// Generate code (imports are passed from the parsed file)
-	code, err := generator.Generate(structs, packageName, imports)
+	code, err := generator.Generate(structs, packageName, imports, version)
 	if err != nil {
 		return fmt.Errorf("failed to generate code: %w", err)
 	}

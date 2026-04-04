@@ -21,11 +21,22 @@ type StructInfo struct {
 	Fields []FieldInfo
 }
 
+// ParseOptions configures parsing behavior.
+type ParseOptions struct {
+	TagKey     string // tag key to look for (e.g., "structtomap", "mapstructure")
+	IncludeAll bool   // if true, include all fields regardless of tags
+}
+
 // TagValue extracts the value of a structtomap tag from a tag string.
 // Returns empty string if not found.
 func TagValue(tag string) string {
-	// Find structtomap:"value"
-	key := "structtomap:"
+	return TagValueWithKey(tag, "structtomap")
+}
+
+// TagValueWithKey extracts the value of a tag with the given key from a tag string.
+// Returns empty string if not found.
+func TagValueWithKey(tag, tagKey string) string {
+	key := tagKey + ":"
 	idx := strings.Index(tag, key)
 	if idx == -1 {
 		return ""
@@ -46,6 +57,11 @@ func TagValue(tag string) string {
 // ParseFile parses a Go file and returns all structs that have at least one field
 // with a `structtomap` tag, along with the file's imports.
 func ParseFile(filename string) ([]StructInfo, []string, error) {
+	return ParseFileWithOptions(filename, ParseOptions{TagKey: "structtomap", IncludeAll: false})
+}
+
+// ParseFileWithOptions parses a Go file and returns structs according to options.
+func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []string, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
@@ -65,10 +81,13 @@ func ParseFile(filename string) ([]StructInfo, []string, error) {
 			return true
 		}
 
-		// Check if any field has a structtomap tag
-		fields := extractFields(structType)
-		if len(fields) == 0 {
-			return true // No fields with structtomap tags, skip this struct
+		// Extract fields according to options
+		fields := extractFieldsWithOptions(structType, opts)
+		// If IncludeAll is false, we still need at least one field with the tag?
+		// The original behavior skipped structs with zero fields with tag.
+		// We'll keep that behavior: if IncludeAll is false and no fields have tag, skip.
+		if !opts.IncludeAll && len(fields) == 0 {
+			return true // No fields with required tag, skip this struct
 		}
 
 		structs = append(structs, StructInfo{
@@ -94,14 +113,24 @@ func ParseFile(filename string) ([]StructInfo, []string, error) {
 
 // extractFields extracts fields from a struct type that have structtomap tags.
 func extractFields(structType *ast.StructType) []FieldInfo {
+	return extractFieldsWithOptions(structType, ParseOptions{TagKey: "structtomap", IncludeAll: false})
+}
+
+// extractFieldsWithOptions extracts fields from a struct type according to options.
+func extractFieldsWithOptions(structType *ast.StructType, opts ParseOptions) []FieldInfo {
 	var fields []FieldInfo
 
 	for _, field := range structType.Fields.List {
-		if field.Tag == nil {
-			continue
+		// Determine if field should be included
+		var tag string
+		if field.Tag != nil {
+			tag = strings.Trim(field.Tag.Value, "`")
 		}
-		tag := strings.Trim(field.Tag.Value, "`")
-		if !strings.Contains(tag, "structtomap:") {
+
+		// Check if field has the required tag
+		hasRequiredTag := field.Tag != nil && strings.Contains(tag, opts.TagKey+":")
+
+		if !opts.IncludeAll && !hasRequiredTag {
 			continue
 		}
 

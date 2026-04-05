@@ -1,15 +1,16 @@
 # gostaticstructdiff - Project Context for AI Code Agent
 
 ## Project Overview
-`gostaticstructdiff` is a Go code generation tool that creates type-safe diff structures and patch functions from Go structs annotated with `structtomap` tags. It enables efficient structural diffing and patching operations for applications that need to track changes between versions of data structures.
+`gostaticstructdiff` is a Go code generation tool that creates type-safe diff structures and patch functions from Go structs annotated with configurable tags (default: `structtomap`). It enables efficient structural diffing and patching operations for applications that need to track changes between versions of data structures.
 
 ## Core Functionality
-- **Input**: Go source file containing structs with `structtomap` tags
+- **Input**: Go source file containing structs with configurable tags (default: `structtomap`)
 - **Output**: Generated Go file with `_diff` suffix containing:
   - `StructNameDiff` type definitions with field-level change tracking
   - `StructNamePatch(original, new StructName) StructNameDiff` function to compute diffs
   - `ApplyStructNameDiff(original StructName, diff StructNameDiff) StructName` function to apply diffs
 - **Type Support**: Basic types, pointers, slices, maps, nested structs, and embedded types
+- **Flexibility**: Custom tag selection via `-tag` flag; include all fields via `-all` flag
 
 ## Project Structure
 ```
@@ -37,7 +38,8 @@ gostaticstructdiff/
 
 ### 1. Parser (`parser/parser.go`)
 - Uses Go's `go/ast` package to parse source files
-- Extracts structs that have at least one field with `structtomap` tag
+- Extracts structs that have at least one field with the specified tag (default: `structtomap`)
+- Supports `-all` flag to include all fields regardless of tags
 - Returns `StructInfo` with field names, types, and tags
 - Handles imports from the source file
 
@@ -60,6 +62,8 @@ Options:
 - `-input`: Input Go file (required)
 - `-output`: Output file (default: `<input>_diff.go`)
 - `-struct`: Specific struct to generate (default: all)
+- `-tag`: Tag key to look for (default: `structtomap`)
+- `-all`: Include all fields regardless of tags (default: false)
 - `-verbose`: Enable verbose logging
 - `-version`: Show version
 

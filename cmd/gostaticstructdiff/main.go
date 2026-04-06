@@ -82,7 +82,7 @@ func processFile(inputFile, outputFile, structName, tagKey string, includeAll, v
 		TagKey:     tagKey,
 		IncludeAll: includeAll,
 	}
-	structs, imports, err := parser.ParseFileWithOptions(inputFile, opts)
+	structs, imports, typeDefs, err := parser.ParseFileWithOptions(inputFile, opts)
 	if err != nil {
 		return fmt.Errorf("failed to parse input file: %w", err)
 	}
@@ -122,7 +122,7 @@ func processFile(inputFile, outputFile, structName, tagKey string, includeAll, v
 	}
 
 	// Generate code (imports are passed from the parsed file)
-	code, err := generator.Generate(structs, packageName, imports, version)
+	code, err := generator.Generate(structs, packageName, imports, version, typeDefs)
 	if err != nil {
 		return fmt.Errorf("failed to generate code: %w", err)
 	}

@@ -50,7 +50,9 @@ type TypeInfo struct {
 }
 
 // Classify analyzes an AST expression and returns a TypeInfo.
-func Classify(expr ast.Expr) *TypeInfo {
+// knownStructs is a set of type names that are known to be structs (including package qualifiers).
+// If nil, no types are assumed to be structs.
+func Classify(expr ast.Expr, knownStructs map[string]bool, typeDefs map[string]ast.Expr) *TypeInfo {
 	switch t := expr.(type) {
 	case *ast.Ident:
 		// Basic type or named type
@@ -61,14 +63,28 @@ func Classify(expr ast.Expr) *TypeInfo {
 				TypeString: name,
 			}
 		}
-		// Assume it's a struct (could be imported)
+		// Check if it's a known struct
+		if knownStructs != nil && knownStructs[name] {
+			return &TypeInfo{
+				Category:   CategoryStruct,
+				TypeString: name,
+			}
+		}
+		// Look up in type definitions
+		if typeDefs != nil {
+			if underlying, ok := typeDefs[name]; ok {
+				// Recursively classify the underlying type
+				return Classify(underlying, knownStructs, typeDefs)
+			}
+		}
+		// Assume it's a basic (comparable) type (e.g., type alias)
 		return &TypeInfo{
-			Category:   CategoryStruct,
+			Category:   CategoryBasic,
 			TypeString: name,
 		}
 	case *ast.StarExpr:
 		// Pointer type
-		elem := Classify(t.X)
+		elem := Classify(t.X, knownStructs, typeDefs)
 		return &TypeInfo{
 			Category:   CategoryPointer,
 			TypeString: "*" + elem.TypeString,
@@ -77,15 +93,15 @@ func Classify(expr ast.Expr) *TypeInfo {
 	case *ast.ArrayType:
 		// Slice (if Len is nil) or array (if Len present)
 		// For simplicity, treat both as slice
-		elem := Classify(t.Elt)
+		elem := Classify(t.Elt, knownStructs, typeDefs)
 		return &TypeInfo{
 			Category:   CategorySlice,
 			TypeString: "[]" + elem.TypeString,
 			Element:    elem,
 		}
 	case *ast.MapType:
-		key := Classify(t.Key)
-		value := Classify(t.Value)
+		key := Classify(t.Key, knownStructs, typeDefs)
+		value := Classify(t.Value, knownStructs, typeDefs)
 		return &TypeInfo{
 			Category:   CategoryMap,
 			TypeString: "map[" + key.TypeString + "]" + value.TypeString,
@@ -94,10 +110,17 @@ func Classify(expr ast.Expr) *TypeInfo {
 		}
 	case *ast.SelectorExpr:
 		// Qualified identifier (e.g., "models.User")
-		// Treat as struct for now
 		typeStr := exprToString(expr)
+		// Check if it's a known struct
+		if knownStructs != nil && knownStructs[typeStr] {
+			return &TypeInfo{
+				Category:   CategoryStruct,
+				TypeString: typeStr,
+			}
+		}
+		// Cannot determine underlying type; treat as unknown (use reflect.DeepEqual)
 		return &TypeInfo{
-			Category:   CategoryStruct,
+			Category:   CategoryUnknown,
 			TypeString: typeStr,
 		}
 	case *ast.StructType:

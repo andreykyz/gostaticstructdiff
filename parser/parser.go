@@ -57,25 +57,33 @@ func TagValueWithKey(tag, tagKey string) string {
 // ParseFile parses a Go file and returns all structs that have at least one field
 // with a `structtomap` tag, along with the file's imports.
 func ParseFile(filename string) ([]StructInfo, []string, error) {
-	return ParseFileWithOptions(filename, ParseOptions{TagKey: "structtomap", IncludeAll: false})
+	structs, imports, _, err := ParseFileWithOptions(filename, ParseOptions{TagKey: "structtomap", IncludeAll: false})
+	return structs, imports, err
 }
 
 // ParseFileWithOptions parses a Go file and returns structs according to options.
-func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []string, error) {
+// It also returns a map of all type definitions (including non-structs) in the file,
+// keyed by type name (without package qualifier).
+func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []string, map[string]ast.Expr, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	var structs []StructInfo
+	typeDefs := make(map[string]ast.Expr)
 
-	// Walk through the AST and collect struct definitions
+	// Walk through the AST and collect all type definitions
 	ast.Inspect(node, func(n ast.Node) bool {
 		typeSpec, ok := n.(*ast.TypeSpec)
 		if !ok {
 			return true
 		}
+		// Store the underlying type expression
+		typeDefs[typeSpec.Name.Name] = typeSpec.Type
+
+		// If it's a struct, also process it for struct info
 		structType, ok := typeSpec.Type.(*ast.StructType)
 		if !ok {
 			return true
@@ -108,7 +116,7 @@ func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []s
 		imports = append(imports, imp)
 	}
 
-	return structs, imports, nil
+	return structs, imports, typeDefs, nil
 }
 
 // extractFields extracts fields from a struct type that have structtomap tags.

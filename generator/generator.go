@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"go/ast"
 	"strings"
 	"text/template"
 
@@ -31,19 +32,25 @@ type StructTemplateData struct {
 }
 
 // Generate generates diff code for the given structs and writes to output.
-func Generate(structs []parser.StructInfo, packageName string, imports []string, version string) (string, error) {
+func Generate(structs []parser.StructInfo, packageName string, imports []string, version string, typeDefs map[string]ast.Expr) (string, error) {
 	// Load templates
 	tmpl, err := loadTemplates()
 	if err != nil {
 		return "", fmt.Errorf("failed to load templates: %w", err)
 	}
 
+	// Build a set of known struct names (from the same package)
+	knownStructs := make(map[string]bool)
+	for _, s := range structs {
+		knownStructs[s.Name] = true
+	}
+
 	// Determine if we need reflect import
 	needsReflect := false
 	for _, s := range structs {
 		for _, f := range s.Fields {
-			typeInfo := types.Classify(f.TypeExpr)
-			if typeInfo.Category == types.CategorySlice || typeInfo.Category == types.CategoryMap {
+			typeInfo := types.Classify(f.TypeExpr, knownStructs, typeDefs)
+			if typeInfo.Category == types.CategorySlice || typeInfo.Category == types.CategoryMap || typeInfo.Category == types.CategoryUnknown {
 				needsReflect = true
 				break
 			}
@@ -85,7 +92,7 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 
 	// Generate each struct diff
 	for _, s := range structs {
-		data := convertToTemplateData(s)
+		data := convertToTemplateData(s, knownStructs, typeDefs)
 		err = tmpl.ExecuteTemplate(&output, "struct_diff.tmpl", data)
 		if err != nil {
 			return "", fmt.Errorf("failed to execute struct template for %s: %w", s.Name, err)
@@ -104,14 +111,16 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 }
 
 // convertToTemplateData converts a parser.StructInfo to StructTemplateData.
-func convertToTemplateData(s parser.StructInfo) StructTemplateData {
+// knownStructs is a set of type names that are known to be structs.
+// typeDefs is a map of type names to their underlying AST expressions.
+func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, typeDefs map[string]ast.Expr) StructTemplateData {
 	data := StructTemplateData{
 		Name:   s.Name,
 		Fields: make([]FieldTemplateData, 0, len(s.Fields)),
 	}
 
 	for _, f := range s.Fields {
-		typeInfo := types.Classify(f.TypeExpr)
+		typeInfo := types.Classify(f.TypeExpr, knownStructs, typeDefs)
 		category := typeInfo.Category.String()
 		isAnonymous := false
 
@@ -120,6 +129,11 @@ func convertToTemplateData(s parser.StructInfo) StructTemplateData {
 			// Treat anonymous structs as basic (comparable) for simplicity
 			category = "basic"
 			isAnonymous = true
+		}
+
+		// Treat unknown types as slice (use reflect.DeepEqual)
+		if typeInfo.Category == types.CategoryUnknown {
+			category = "slice"
 		}
 
 		fieldData := FieldTemplateData{

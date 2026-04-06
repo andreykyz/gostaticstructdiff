@@ -32,7 +32,11 @@ type StructTemplateData struct {
 }
 
 // Generate generates diff code for the given structs and writes to output.
-func Generate(structs []parser.StructInfo, packageName string, imports []string, version string, typeDefs map[string]ast.Expr) (string, error) {
+func Generate(structs []parser.StructInfo, packageName string, imports []string, version string, typeDefs map[string]ast.Expr, verbose bool) (string, error) {
+	if verbose {
+		fmt.Printf("Generating code for %d struct(s) in package %s\n", len(structs), packageName)
+	}
+
 	// Load templates
 	tmpl, err := loadTemplates()
 	if err != nil {
@@ -72,6 +76,9 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 		if !hasReflect {
 			imports = append(imports, "reflect")
 		}
+		if verbose {
+			fmt.Printf("  Added reflect import (needed for slice/map/unknown types)\n")
+		}
 	}
 
 	// Prepare data for each struct
@@ -92,6 +99,9 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 
 	// Generate each struct diff
 	for _, s := range structs {
+		if verbose {
+			fmt.Printf("  Generating diff for struct %s (%d fields)\n", s.Name, len(s.Fields))
+		}
 		data := convertToTemplateData(s, knownStructs, typeDefs)
 		err = tmpl.ExecuteTemplate(&output, "struct_diff.tmpl", data)
 		if err != nil {
@@ -105,6 +115,10 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 			return "", fmt.Errorf("failed to execute patch template for %s: %w", s.Name, err)
 		}
 		output.WriteString("\n\n")
+	}
+
+	if verbose {
+		fmt.Printf("Generation completed for %d struct(s)\n", len(structs))
 	}
 
 	return output.String(), nil

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go/ast"
 	"os"
 	"strings"
 
@@ -14,8 +15,8 @@ const version = "0.1.1"
 
 func main() {
 	// Define command-line flags
-	inputFile := flag.String("input", "", "Input Go file (required)")
-	outputFile := flag.String("output", "", "Output file (default: <input>_diff.go)")
+	inputFiles := flag.String("input", "", "Input Go file(s), comma-separated (required)")
+	outputFile := flag.String("output", "", "Output file (default: <first_input>_diff.go)")
 	structName := flag.String("struct", "", "Specific struct to generate (default: all)")
 	tagKey := flag.String("tag", "structtomap", "Tag key to look for (default: structtomap)")
 	includeAll := flag.Bool("all", false, "Include all fields regardless of tags")
@@ -28,6 +29,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -input models/user.go,models/order.go -output combined_diff.go\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go -output user_diff.go -struct User\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go -tag mapstructure -all\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go -verbose\n", os.Args[0])
@@ -41,19 +43,26 @@ func main() {
 	}
 
 	// Validate input
-	if *inputFile == "" {
+	if *inputFiles == "" {
 		fmt.Fprintf(os.Stderr, "Error: -input flag is required\n")
 		flag.Usage()
 		os.Exit(1)
 	}
 
+	// Split comma-separated input files
+	files := strings.Split(*inputFiles, ",")
+	// Trim whitespace from each file
+	for i, f := range files {
+		files[i] = strings.TrimSpace(f)
+	}
+
 	// Set default output filename if not provided
 	if *outputFile == "" {
-		*outputFile = generateOutputFilename(*inputFile)
+		*outputFile = generateOutputFilename(files[0])
 	}
 
 	if *verbose {
-		fmt.Printf("Input file: %s\n", *inputFile)
+		fmt.Printf("Input files: %s\n", strings.Join(files, ", "))
 		fmt.Printf("Output file: %s\n", *outputFile)
 		if *structName != "" {
 			fmt.Printf("Struct filter: %s\n", *structName)
@@ -64,8 +73,8 @@ func main() {
 		}
 	}
 
-	// Process the file
-	if err := processFile(*inputFile, *outputFile, *structName, *tagKey, *includeAll, *verbose); err != nil {
+	// Process the files
+	if err := processFiles(files, *outputFile, *structName, *tagKey, *includeAll, *verbose); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -75,25 +84,52 @@ func main() {
 	}
 }
 
-// processFile reads the input file, parses structs, generates diff code, and writes to output.
-func processFile(inputFile, outputFile, structName, tagKey string, includeAll, verbose bool) error {
-	// Parse the input file with options
+// processFiles reads multiple input files, parses structs, generates diff code, and writes to output.
+func processFiles(inputFiles []string, outputFile, structName, tagKey string, includeAll, verbose bool) error {
+	var allStructs []parser.StructInfo
+	allImports := make(map[string]bool)
+	allTypeDefs := make(map[string]ast.Expr)
+
 	opts := parser.ParseOptions{
 		TagKey:     tagKey,
 		IncludeAll: includeAll,
+		Verbose:    verbose,
 	}
-	structs, imports, typeDefs, err := parser.ParseFileWithOptions(inputFile, opts)
-	if err != nil {
-		return fmt.Errorf("failed to parse input file: %w", err)
+
+	// Process each file
+	for _, inputFile := range inputFiles {
+		structs, imports, typeDefs, err := parser.ParseFileWithOptions(inputFile, opts)
+		if err != nil {
+			return fmt.Errorf("failed to parse input file %s: %w", inputFile, err)
+		}
+
+		// Collect structs
+		allStructs = append(allStructs, structs...)
+
+		// Collect imports
+		for _, imp := range imports {
+			allImports[imp] = true
+		}
+
+		// Collect type definitions (warn on conflicts)
+		for name, expr := range typeDefs {
+			if _, ok := allTypeDefs[name]; ok {
+				// Type definition conflict - log warning but continue
+				if verbose {
+					fmt.Printf("Warning: type %s redefined (previous definition from another file)\n", name)
+				}
+			}
+			allTypeDefs[name] = expr
+		}
 	}
 
 	if verbose {
 		if includeAll {
-			fmt.Printf("Found %d struct(s) (all fields included)\n", len(structs))
+			fmt.Printf("Found %d struct(s) across %d file(s) (all fields included)\n", len(allStructs), len(inputFiles))
 		} else {
-			fmt.Printf("Found %d struct(s) with %s tags\n", len(structs), tagKey)
+			fmt.Printf("Found %d struct(s) with %s tags across %d file(s)\n", len(allStructs), tagKey, len(inputFiles))
 		}
-		for _, s := range structs {
+		for _, s := range allStructs {
 			fmt.Printf("  - %s (%d fields)\n", s.Name, len(s.Fields))
 		}
 	}
@@ -101,28 +137,37 @@ func processFile(inputFile, outputFile, structName, tagKey string, includeAll, v
 	// Filter by struct name if specified
 	if structName != "" {
 		filtered := make([]parser.StructInfo, 0)
-		for _, s := range structs {
+		for _, s := range allStructs {
 			if s.Name == structName {
 				filtered = append(filtered, s)
 			}
 		}
 		if len(filtered) == 0 {
-			return fmt.Errorf("struct %q not found in input file", structName)
+			return fmt.Errorf("struct %q not found in any input file", structName)
 		}
-		structs = filtered
+		allStructs = filtered
 		if verbose {
 			fmt.Printf("Filtered to struct: %s\n", structName)
 		}
 	}
 
-	// Determine package name from input file
-	packageName, err := extractPackageName(inputFile)
+	// Determine package name from first input file
+	if len(inputFiles) == 0 {
+		return fmt.Errorf("no input files provided")
+	}
+	packageName, err := extractPackageName(inputFiles[0])
 	if err != nil {
 		return fmt.Errorf("failed to determine package name: %w", err)
 	}
 
+	// Convert imports map to slice
+	importsSlice := make([]string, 0, len(allImports))
+	for imp := range allImports {
+		importsSlice = append(importsSlice, imp)
+	}
+
 	// Generate code (imports are passed from the parsed file)
-	code, err := generator.Generate(structs, packageName, imports, version, typeDefs)
+	code, err := generator.Generate(allStructs, packageName, importsSlice, version, allTypeDefs, verbose)
 	if err != nil {
 		return fmt.Errorf("failed to generate code: %w", err)
 	}

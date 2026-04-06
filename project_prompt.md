@@ -4,13 +4,13 @@
 `gostaticstructdiff` is a Go code generation tool that creates type-safe diff structures and patch functions from Go structs annotated with configurable tags (default: `structtomap`). It enables efficient structural diffing and patching operations for applications that need to track changes between versions of data structures.
 
 ## Core Functionality
-- **Input**: Go source file containing structs with configurable tags (default: `structtomap`)
+- **Input**: Go source file(s) containing structs with configurable tags (default: `structtomap`). Multiple files can be specified as comma-separated list.
 - **Output**: Generated Go file with `_diff` suffix containing:
   - `StructNameDiff` type definitions with field-level change tracking
   - `StructNamePatch(original, new StructName) StructNameDiff` function to compute diffs
   - `ApplyStructNameDiff(original StructName, diff StructNameDiff) StructName` function to apply diffs
 - **Type Support**: Basic types, pointers, slices, maps, nested structs, embedded types, wrapped primitive types (type aliases), and map aliases (via reflect.DeepEqual fallback)
-- **Flexibility**: Custom tag selection via `-tag` flag; include all fields via `-all` flag
+- **Flexibility**: Custom tag selection via `-tag` flag; include all fields via `-all` flag; multifile input support
 
 ## Project Structure
 ```
@@ -48,6 +48,7 @@ gostaticstructdiff/
 - Returns `StructInfo` with field names, types, and tags
 - Collects all type definitions (`typeDefs`) within the parsed file for intra‑file type resolution
 - Handles imports from the source file
+- **Multifile Support**: The CLI processes multiple files by calling the parser for each file and merging results
 
 ### 2. Generator (`generator/generator.go`)
 - Uses Go's `text/template` package for code generation
@@ -57,6 +58,7 @@ gostaticstructdiff/
 - Creates patch functions with proper type comparisons (`!=` for basic, `reflect.DeepEqual` for slices and unknown types, key‑wise diff for maps)
 - Adds `reflect` import when needed (slices, maps, unknown types)
 - Uses intra‑file type definitions (`typeDefs`) for accurate classification
+- **Multifile Support**: Can generate combined diff code for structs collected from multiple input files
 
 ### 3. Type System (`types/types.go`)
 - Categorizes field types for appropriate diff strategy (basic, pointer, slice, map, struct, unknown)
@@ -64,19 +66,22 @@ gostaticstructdiff/
 - Resolves wrapped primitive types and type aliases using intra‑file type definitions (`typeDefs`)
 - Treats unknown qualified identifiers as `CategoryUnknown` (fallback to `reflect.DeepEqual`)
 - Manages imports for generated code
+- **Multifile Support**: Works with merged type definitions from multiple input files for accurate type classification
 
 ### 4. CLI Interface
 ```bash
 gostaticstructdiff -input <file.go> -output <file_diff.go> [options]
 ```
 Options:
-- `-input`: Input Go file (required)
-- `-output`: Output file (default: `<input>_diff.go`)
+- `-input`: Input Go file(s), comma-separated (required)
+- `-output`: Output file (default: `<first_input>_diff.go`)
 - `-struct`: Specific struct to generate (default: all)
 - `-tag`: Tag key to look for (default: `structtomap`)
 - `-all`: Include all fields regardless of tags (default: false)
 - `-verbose`: Enable verbose logging
 - `-version`: Show version
+
+**Multifile Input**: Multiple Go files can be specified as a comma-separated list. All files must belong to the same package. The tool will parse each file, collect structs with the specified tag, merge imports and type definitions, and generate a single combined diff file.
 
 ## Generated Code Pattern
 

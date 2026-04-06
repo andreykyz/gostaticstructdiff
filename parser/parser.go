@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -25,6 +26,7 @@ type StructInfo struct {
 type ParseOptions struct {
 	TagKey     string // tag key to look for (e.g., "structtomap", "mapstructure")
 	IncludeAll bool   // if true, include all fields regardless of tags
+	Verbose    bool   // if true, enable verbose logging
 }
 
 // TagValue extracts the value of a structtomap tag from a tag string.
@@ -65,6 +67,11 @@ func ParseFile(filename string) ([]StructInfo, []string, error) {
 // It also returns a map of all type definitions (including non-structs) in the file,
 // keyed by type name (without package qualifier).
 func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []string, map[string]ast.Expr, error) {
+	if opts.Verbose {
+		fmt.Printf("Parsing file: %s\n", filename)
+		fmt.Printf("Options: tagKey=%s, includeAll=%v\n", opts.TagKey, opts.IncludeAll)
+	}
+
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
@@ -95,7 +102,14 @@ func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []s
 		// The original behavior skipped structs with zero fields with tag.
 		// We'll keep that behavior: if IncludeAll is false and no fields have tag, skip.
 		if !opts.IncludeAll && len(fields) == 0 {
+			if opts.Verbose {
+				fmt.Printf("  Skipping struct %s: no fields with tag %s\n", typeSpec.Name.Name, opts.TagKey)
+			}
 			return true // No fields with required tag, skip this struct
+		}
+
+		if opts.Verbose {
+			fmt.Printf("  Found struct %s with %d fields\n", typeSpec.Name.Name, len(fields))
 		}
 
 		structs = append(structs, StructInfo{
@@ -114,6 +128,10 @@ func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []s
 	imports := make([]string, 0, len(importSet))
 	for imp := range importSet {
 		imports = append(imports, imp)
+	}
+
+	if opts.Verbose {
+		fmt.Printf("Parsed %d struct(s), %d import(s), %d type definition(s)\n", len(structs), len(imports), len(typeDefs))
 	}
 
 	return structs, imports, typeDefs, nil

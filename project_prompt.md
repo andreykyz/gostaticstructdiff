@@ -31,6 +31,11 @@ gostaticstructdiff/
 │   ├── models/user_diff.go             # Generated diff code
 │   ├── complex.go                      # Complex struct with nested types
 │   └── complex_diff.go                 # Generated complex diff
+├── examples_model/                     # Real-world model example (DataCenter)
+│   ├── datacenter.go                   # DataCenter struct with mygoodtag tags
+│   ├── datacenter_diff.go              # Generated diff for DataCenter
+│   ├── cmd/main.go                     # Example program demonstrating diff/patch
+│   └── ... (other model files)
 └── doc_for_ai/                         # AI development guides
 ```
 
@@ -128,7 +133,7 @@ func ApplyUserDiff(original User, diff UserDiff) User {
 5. **Error Handling**: Provide clear error messages for invalid input
 
 ## Quick Start for AI Agent
-1. Review the `examples/` directory to understand input/output patterns
+1. Review the `examples/` directory to understand input/output patterns, and the `examples_model/` directory for a real-world DataCenter example
 2. Examine `doc_for_ai/` for development guidance
 3. Check existing implementation in `parser/`, `generator/`, and `types/` directories
 4. Use `go generate` integration for automated code generation

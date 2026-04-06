@@ -31,7 +31,7 @@ func TestClassify_BasicTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.expr, func(t *testing.T) {
 			expr := parseExpr(t, tt.expr)
-			info := Classify(expr)
+			info := Classify(expr, nil, nil)
 			if info.Category != tt.expected {
 				t.Errorf("Classify(%q).Category = %v, want %v", tt.expr, info.Category, tt.expected)
 			}
@@ -44,7 +44,7 @@ func TestClassify_BasicTypes(t *testing.T) {
 
 func TestClassify_Pointer(t *testing.T) {
 	expr := parseExpr(t, "*int")
-	info := Classify(expr)
+	info := Classify(expr, nil, nil)
 	if info.Category != CategoryPointer {
 		t.Errorf("Category = %v, want CategoryPointer", info.Category)
 	}
@@ -60,7 +60,7 @@ func TestClassify_Pointer(t *testing.T) {
 
 func TestClassify_Slice(t *testing.T) {
 	expr := parseExpr(t, "[]string")
-	info := Classify(expr)
+	info := Classify(expr, nil, nil)
 	if info.Category != CategorySlice {
 		t.Errorf("Category = %v, want CategorySlice", info.Category)
 	}
@@ -76,7 +76,7 @@ func TestClassify_Slice(t *testing.T) {
 
 func TestClassify_Map(t *testing.T) {
 	expr := parseExpr(t, "map[string]int")
-	info := Classify(expr)
+	info := Classify(expr, nil, nil)
 	if info.Category != CategoryMap {
 		t.Errorf("Category = %v, want CategoryMap", info.Category)
 	}
@@ -98,7 +98,8 @@ func TestClassify_Map(t *testing.T) {
 func TestClassify_Struct(t *testing.T) {
 	// Named struct (identifier)
 	expr := parseExpr(t, "MyStruct")
-	info := Classify(expr)
+	knownStructs := map[string]bool{"MyStruct": true}
+	info := Classify(expr, knownStructs, nil)
 	if info.Category != CategoryStruct {
 		t.Errorf("Category = %v, want CategoryStruct", info.Category)
 	}
@@ -109,7 +110,8 @@ func TestClassify_Struct(t *testing.T) {
 
 func TestClassify_SelectorExpr(t *testing.T) {
 	expr := parseExpr(t, "pkg.SubType")
-	info := Classify(expr)
+	knownStructs := map[string]bool{"pkg.SubType": true}
+	info := Classify(expr, knownStructs, nil)
 	if info.Category != CategoryStruct {
 		t.Errorf("Category = %v, want CategoryStruct", info.Category)
 	}
@@ -132,7 +134,13 @@ func TestDetermineDiffStrategy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.expr, func(t *testing.T) {
 			expr := parseExpr(t, tt.expr)
-			info := Classify(expr)
+			var info *TypeInfo
+			if tt.expr == "MyStruct" {
+				knownStructs := map[string]bool{"MyStruct": true}
+				info = Classify(expr, knownStructs, nil)
+			} else {
+				info = Classify(expr, nil, nil)
+			}
 			strategy := DetermineDiffStrategy(info)
 			if strategy.TemplateName != tt.wantTmpl {
 				t.Errorf("TemplateName = %q, want %q", strategy.TemplateName, tt.wantTmpl)

@@ -9,7 +9,7 @@
   - `StructNameDiff` type definitions with field-level change tracking
   - `StructNamePatch(original, new StructName) StructNameDiff` function to compute diffs
   - `ApplyStructNameDiff(original StructName, diff StructNameDiff) StructName` function to apply diffs
-- **Type Support**: Basic types, pointers, slices, maps, nested structs, and embedded types
+- **Type Support**: Basic types, pointers, slices, maps, nested structs, embedded types, wrapped primitive types (type aliases), and map aliases (via reflect.DeepEqual fallback)
 - **Flexibility**: Custom tag selection via `-tag` flag; include all fields via `-all` flag
 
 ## Project Structure
@@ -46,17 +46,23 @@ gostaticstructdiff/
 - Extracts structs that have at least one field with the specified tag (default: `structtomap`)
 - Supports `-all` flag to include all fields regardless of tags
 - Returns `StructInfo` with field names, types, and tags
+- Collects all type definitions (`typeDefs`) within the parsed file for intra‑file type resolution
 - Handles imports from the source file
 
 ### 2. Generator (`generator/generator.go`)
 - Uses Go's `text/template` package for code generation
 - Different templates for different field types (basic, slice, map, pointer, struct)
-- Generates diff structs with nested `Value` and `Set` fields
-- Creates patch functions with proper type comparisons
+- Maps unknown types to slice template (using `reflect.DeepEqual`) for safe comparison
+- Generates diff structs with nested `Value` and `Set` fields (or `Add`/`Del` for maps)
+- Creates patch functions with proper type comparisons (`!=` for basic, `reflect.DeepEqual` for slices and unknown types, key‑wise diff for maps)
+- Adds `reflect` import when needed (slices, maps, unknown types)
+- Uses intra‑file type definitions (`typeDefs`) for accurate classification
 
 ### 3. Type System (`types/types.go`)
-- Categorizes field types for appropriate diff strategy
+- Categorizes field types for appropriate diff strategy (basic, pointer, slice, map, struct, unknown)
 - Handles nested struct recursion
+- Resolves wrapped primitive types and type aliases using intra‑file type definitions (`typeDefs`)
+- Treats unknown qualified identifiers as `CategoryUnknown` (fallback to `reflect.DeepEqual`)
 - Manages imports for generated code
 
 ### 4. CLI Interface

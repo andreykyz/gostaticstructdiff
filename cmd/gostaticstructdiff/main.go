@@ -11,7 +11,7 @@ import (
 	"github.com/andreykyz/gostaticstructdiff/parser"
 )
 
-const version = "0.1.1"
+const version = "0.1.2"
 
 func main() {
 	// Define command-line flags

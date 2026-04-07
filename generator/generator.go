@@ -17,12 +17,22 @@ var templateFS embed.FS
 
 // FieldTemplateData holds data for a field in the template.
 type FieldTemplateData struct {
-	Name        string
-	Type        string
-	Category    string
-	KeyType     string
-	ValueType   string
-	IsAnonymous bool
+	Name               string
+	Type               string
+	Category           string
+	KeyType            string
+	ValueType          string
+	ValueIsStruct      bool
+	ValueDiffType      string
+	ValueTypePackage   string // package of ValueType (empty if same package)
+	ValueTypeName      string // name of ValueType without package
+	ValueDiffFunc      string // qualified function name to apply diff (e.g., "models.ApplyMetadataDiff")
+	ElementIsStruct    bool
+	ElementDiffType    string
+	ElementTypePackage string // package of ElementType (empty if same package)
+	ElementTypeName    string // name of ElementType without package
+	ElementDiffFunc    string // qualified function name to apply diff for slice elements
+	IsAnonymous        bool
 }
 
 // StructTemplateData holds data for a struct in the template.
@@ -124,6 +134,15 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 	return output.String(), nil
 }
 
+// splitType splits a type string like "models.Metadata" into package and name.
+// If there's no dot, package is empty.
+func splitType(typeStr string) (pkg, name string) {
+	if idx := strings.LastIndex(typeStr, "."); idx != -1 {
+		return typeStr[:idx], typeStr[idx+1:]
+	}
+	return "", typeStr
+}
+
 // convertToTemplateData converts a parser.StructInfo to StructTemplateData.
 // knownStructs is a set of type names that are known to be structs.
 // typeDefs is a map of type names to their underlying AST expressions.
@@ -161,6 +180,36 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 		if typeInfo.Category == types.CategoryMap && typeInfo.Key != nil && typeInfo.Value != nil {
 			fieldData.KeyType = typeInfo.Key.TypeString
 			fieldData.ValueType = typeInfo.Value.TypeString
+			if typeInfo.Value.Category == types.CategoryStruct {
+				fieldData.ValueIsStruct = true
+				fieldData.ValueDiffType = typeInfo.Value.TypeString + "Diff"
+				// Compute package and name for apply function
+				pkg, name := splitType(typeInfo.Value.TypeString)
+				fieldData.ValueTypePackage = pkg
+				fieldData.ValueTypeName = name
+				if pkg != "" {
+					fieldData.ValueDiffFunc = pkg + ".Apply" + name + "Diff"
+				} else {
+					fieldData.ValueDiffFunc = "Apply" + name + "Diff"
+				}
+			}
+		}
+
+		// For slice types, extract element type
+		if typeInfo.Category == types.CategorySlice && typeInfo.Element != nil {
+			if typeInfo.Element.Category == types.CategoryStruct {
+				fieldData.ElementIsStruct = true
+				fieldData.ElementDiffType = typeInfo.Element.TypeString + "Diff"
+				// Compute package and name for apply function
+				pkg, name := splitType(typeInfo.Element.TypeString)
+				fieldData.ElementTypePackage = pkg
+				fieldData.ElementTypeName = name
+				if pkg != "" {
+					fieldData.ElementDiffFunc = pkg + ".Apply" + name + "Diff"
+				} else {
+					fieldData.ElementDiffFunc = "Apply" + name + "Diff"
+				}
+			}
 		}
 
 		data.Fields = append(data.Fields, fieldData)

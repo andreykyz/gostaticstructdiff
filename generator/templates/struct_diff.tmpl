@@ -12,9 +12,16 @@ type {{.Name}}Diff struct {
 		Value {{.Type}}
 		Set   bool
 		{{- else if eq .Category "map"}}
+		{{- if .ValueIsStruct}}
+		Add map[{{.KeyType}}]{{.ValueType}}
+		Modify map[{{.KeyType}}]{{.ValueDiffType}}
+		Del map[{{.KeyType}}]struct{}
+		Set bool
+		{{- else}}
 		Add map[{{.KeyType}}]{{.ValueType}}
 		Del map[{{.KeyType}}]struct{}
 		Set bool
+		{{- end}}
 		{{- else if eq .Category "struct"}}
 		Value {{.Type}}Diff
 		Set   bool

@@ -9,10 +9,6 @@ GENERATED_EXAMPLE_DIFFS := \
 	$(MODELS_DIR)/user_diff.go \
 	$(MODELS_DIR)/metadata_diff.go
 
-CLUSTER_MODEL_FILES := \
-	$(MODELS_DIR)/cluster.go \
-	$(MODELS_DIR)/node.go
-
 # Default target
 all: build
 

@@ -118,9 +118,10 @@ func Classify(expr ast.Expr, knownStructs map[string]bool, typeDefs map[string]a
 				TypeString: typeStr,
 			}
 		}
-		// Cannot determine underlying type; treat as unknown (use reflect.DeepEqual)
+		// Assume it's a struct (most likely scenario for imported types)
+		// This enables nested struct recursion for cross-package structs.
 		return &TypeInfo{
-			Category:   CategoryUnknown,
+			Category:   CategoryStruct,
 			TypeString: typeStr,
 		}
 	case *ast.StructType:

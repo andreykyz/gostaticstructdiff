@@ -1,1 +1,0 @@
-now you should create documentation for developing project by AI code agent in folder doc_for_ai

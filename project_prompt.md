@@ -36,7 +36,8 @@ gostaticstructdiff/
 │   ├── datacenter_diff.go              # Generated diff for DataCenter
 │   ├── cmd/main.go                     # Example program demonstrating diff/patch
 │   └── ... (other model files)
-└── doc_for_ai/                         # AI development guides
+│ 
+└── debugging/                          # Directory for storing debug code
 ```
 
 ## Key Implementation Details
@@ -154,6 +155,7 @@ func ApplyUserDiff(original User, diff UserDiff) User {
 - All generated code should have zero runtime dependencies
 - Follow Go conventions and best practices
 - Maintain backward compatibility where possible
+- Developers can store debug code in `debugging/` directory
 
 ## Commit Conventions for AI Agents
 When making changes to the codebase, AI agents should follow these commit message guidelines:

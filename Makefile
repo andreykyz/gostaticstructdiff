@@ -34,10 +34,6 @@ generate_example: build
 	./$(BINARY_NAME) -input $(MODELS_DIR)/user.go -verbose
 	./$(BINARY_NAME) -input $(MODELS_DIR)/metadata.go -verbose
 
-generate_cluster_example:
-	@echo "Generating diff files..."
-	./$(BINARY_NAME) -input cluster_model/cluster.go -verbose -tagvalue=mapstructure
-	./$(BINARY_NAME) -input cluster_model/node.go -verbose -tagvalue=mapstructure
 
 # Run tests
 test:

@@ -27,16 +27,11 @@ gostaticstructdiff/
 │   ├── field_struct.tmpl
 │   └── patch_func.tmpl
 ├── examples/                           # Example usage
+│   ├── cmd/main.go                     # Example program demonstrating diff/patch
 │   ├── models/user.go                  # Simple struct example
 │   ├── models/user_diff.go             # Generated diff code
 │   ├── complex.go                      # Complex struct with nested types
 │   └── complex_diff.go                 # Generated complex diff
-├── examples_model/                     # Real-world model example (DataCenter)
-│   ├── datacenter.go                   # DataCenter struct with mygoodtag tags
-│   ├── datacenter_diff.go              # Generated diff for DataCenter
-│   ├── cmd/main.go                     # Example program demonstrating diff/patch
-│   └── ... (other model files)
-│ 
 └── debugging/                          # Directory for storing debug code
 ```
 

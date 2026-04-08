@@ -5,6 +5,7 @@ import (
 
 	"github.com/andreykyz/gostaticstructdiff/examples"
 	"github.com/andreykyz/gostaticstructdiff/examples/models"
+	"github.com/jinzhu/copier"
 )
 
 func main() {
@@ -35,7 +36,8 @@ func main() {
 			Title: "Inner Title",
 			Value: 100,
 		},
-		Ref: &models.User{ID: 99, Username: "refuser", Email: "ref@example.com", Active: true},
+		StaticUser: models.User{ID: 911, Username: "user", Email: "user@example.com", Active: true},
+		Ref:        &models.User{ID: 99, Username: "refuser", Email: "ref@example.com", Active: true},
 		Categories: map[string][]string{
 			"cat1": {"item1", "item2"},
 			"cat2": {"item3"},
@@ -43,11 +45,17 @@ func main() {
 	}
 
 	// Create modified version
-	modified := original
+	modified := examples.ComplexStruct{}
+	err := copier.CopyWithOption(&modified, &original, copier.Option{DeepCopy: true})
+	if err != nil {
+		fmt.Printf("Error copying original to modified: %v\n", err)
+		return
+	}
 	modified.Name = "Modified"
 	modified.Count = 20
 	modified.Tags = append(modified.Tags, "tag3")
 	modified.Users[0].Username = "updated_user1"
+	modified.StaticUser.Username = "updated_user"
 	modified.Metadata["meta2"] = models.Metadata{
 		Label:  "Second metadata",
 		Values: map[string]string{"key2": "value2"},

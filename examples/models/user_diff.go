@@ -22,6 +22,23 @@ type UserDiff struct {
 	}
 }
 
+// IsEmpty returns true if the diff contains no changes.
+func (d *UserDiff) IsEmpty() bool {
+	if d.ID.Set {
+		return false
+	}
+	if d.Username.Set {
+		return false
+	}
+	if d.Email.Set {
+		return false
+	}
+	if d.Active.Set {
+		return false
+	}
+	return true
+}
+
 // UserPatch computes the diff between original and new User.
 func UserPatch(original, new User) UserDiff {
 	var diff UserDiff

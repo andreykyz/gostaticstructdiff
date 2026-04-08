@@ -54,6 +54,41 @@ type ComplexStructDiff struct {
 	}
 }
 
+// IsEmpty returns true if the diff contains no changes.
+func (d *ComplexStructDiff) IsEmpty() bool {
+	if d.Name.Set {
+		return false
+	}
+	if d.Count.Set {
+		return false
+	}
+	if d.Active.Set {
+		return false
+	}
+	if d.Tags.Set {
+		return false
+	}
+	if d.Users.Set {
+		return false
+	}
+	if d.Metadata.Set {
+		return false
+	}
+	if d.Inner.Set {
+		return false
+	}
+	if d.StaticUser.Set {
+		return false
+	}
+	if d.Ref.Set {
+		return false
+	}
+	if d.Categories.Set {
+		return false
+	}
+	return true
+}
+
 // ComplexStructPatch computes the diff between original and new ComplexStruct.
 func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	var diff ComplexStructDiff
@@ -111,7 +146,7 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	// Nested struct diff
 	nestedDiff := models.UserPatch(original.StaticUser, new.StaticUser)
 	diff.StaticUser.Value = nestedDiff
-	diff.StaticUser.Set = true // TODO: check if diff is empty
+	diff.StaticUser.Set = !nestedDiff.IsEmpty()
 	if (original.Ref == nil && new.Ref != nil) || (original.Ref != nil && new.Ref == nil) || (original.Ref != nil && new.Ref != nil && *original.Ref != *new.Ref) {
 		diff.Ref.Value = new.Ref
 		diff.Ref.Set = true

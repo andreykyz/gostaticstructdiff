@@ -70,7 +70,7 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 	// Nested struct diff
 	nestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
 	diff.{{.Name}}.Value = nestedDiff
-	diff.{{.Name}}.Set = true // TODO: check if diff is empty
+	diff.{{.Name}}.Set = !nestedDiff.IsEmpty()
 	{{- end}}
 {{- end}}
 	return diff

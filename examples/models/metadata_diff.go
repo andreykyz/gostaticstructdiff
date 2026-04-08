@@ -27,6 +27,23 @@ type MetadataDiff struct {
 	}
 }
 
+// IsEmpty returns true if the diff contains no changes.
+func (d *MetadataDiff) IsEmpty() bool {
+	if d.Label.Set {
+		return false
+	}
+	if d.Values.Set {
+		return false
+	}
+	if d.Score.Set {
+		return false
+	}
+	if d.Extra.Set {
+		return false
+	}
+	return true
+}
+
 // MetadataPatch computes the diff between original and new Metadata.
 func MetadataPatch(original, new Metadata) MetadataDiff {
 	var diff MetadataDiff

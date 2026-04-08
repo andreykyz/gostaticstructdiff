@@ -29,3 +29,13 @@ type {{.Name}}Diff struct {
 	}
 {{- end}}
 }
+
+// IsEmpty returns true if the diff contains no changes.
+func (d *{{.Name}}Diff) IsEmpty() bool {
+{{- range .Fields}}
+	if d.{{.Name}}.Set {
+		return false
+	}
+{{- end}}
+	return true
+}

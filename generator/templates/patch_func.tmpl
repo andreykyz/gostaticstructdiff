@@ -114,7 +114,7 @@ func Apply{{.Name}}Diff(original {{.Name}}, diff {{.Name}}Diff) {{.Name}} {
 			delete(result.{{.Name}}, k)
 		}
 		{{- else if eq .Category "struct"}}
-		result.{{.Name}} = Apply{{.Type}}Diff(original.{{.Name}}, diff.{{.Name}}.Value)
+		result.{{.Name}} = {{.StructDiffFunc}}(original.{{.Name}}, diff.{{.Name}}.Value)
 		{{- end}}
 	}
 {{- end}}

@@ -21,6 +21,7 @@ type ComplexStruct struct {
 		Title string `structtomap:"title"`
 		Value int    `structtomap:"value"`
 	} `structtomap:"inner"`
+	StaticUser models.User `structtomap:"static_user"`
 	// Pointer to a struct (may be nil)
 	Ref *models.User `structtomap:"ref"`
 	// Map of string to slice of strings

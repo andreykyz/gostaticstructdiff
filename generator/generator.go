@@ -32,6 +32,9 @@ type FieldTemplateData struct {
 	ElementTypePackage string // package of ElementType (empty if same package)
 	ElementTypeName    string // name of ElementType without package
 	ElementDiffFunc    string // qualified function name to apply diff for slice elements
+	StructTypePackage  string // package of struct type (empty if same package)
+	StructTypeName     string // name of struct type without package
+	StructDiffFunc     string // qualified function name to apply diff for struct fields (e.g., "models.ApplyUserDiff")
 	IsAnonymous        bool
 }
 
@@ -209,6 +212,18 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 				} else {
 					fieldData.ElementDiffFunc = "Apply" + name + "Diff"
 				}
+			}
+		}
+
+		// For struct types, compute diff function
+		if typeInfo.Category == types.CategoryStruct && !isAnonymous {
+			pkg, name := splitType(typeInfo.TypeString)
+			fieldData.StructTypePackage = pkg
+			fieldData.StructTypeName = name
+			if pkg != "" {
+				fieldData.StructDiffFunc = pkg + ".Apply" + name + "Diff"
+			} else {
+				fieldData.StructDiffFunc = "Apply" + name + "Diff"
 			}
 		}
 

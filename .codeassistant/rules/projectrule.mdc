@@ -23,12 +23,13 @@ gostaticstructdiff/
 ├── generator/generator.go              # Template-based code generation
 ├── types/types.go                      # Type system for field type categorization
 ├── generator/templates/                # Go templates for different field types
-│   ├── field_basic.tmpl
-│   ├── field_slice.tmpl
-│   ├── field_map.tmpl
-│   ├── field_pointer.tmpl
-│   ├── field_struct.tmpl
-│   └── patch_func.tmpl
+│   ├── field_basic.go.tmpl
+│   ├── field_slice.go.tmpl
+│   ├── field_map.go.tmpl
+│   ├── field_pointer.go.tmpl
+│   ├── field_struct.go.tmpl
+│   ├── struct_diff.go.tmpl
+│   └── patch_func.go.tmpl
 ├── examples/                           # Example usage
 │   ├── models/user.go                  # Simple struct example
 │   ├── models/user_diff.go             # Generated diff code

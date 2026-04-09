@@ -116,14 +116,14 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 			fmt.Printf("  Generating diff for struct %s (%d fields)\n", s.Name, len(s.Fields))
 		}
 		data := convertToTemplateData(s, knownStructs, typeDefs)
-		err = tmpl.ExecuteTemplate(&output, "struct_diff.tmpl", data)
+		err = tmpl.ExecuteTemplate(&output, "struct_diff.go.tmpl", data)
 		if err != nil {
 			return "", fmt.Errorf("failed to execute struct template for %s: %w", s.Name, err)
 		}
 		output.WriteString("\n\n")
 
 		// Generate patch functions
-		err = tmpl.ExecuteTemplate(&output, "patch_func.tmpl", data)
+		err = tmpl.ExecuteTemplate(&output, "patch_func.go.tmpl", data)
 		if err != nil {
 			return "", fmt.Errorf("failed to execute patch template for %s: %w", s.Name, err)
 		}

@@ -38,10 +38,10 @@ func TestGenerate_SimpleStruct(t *testing.T) {
 	if !strings.Contains(code, "type UserDiff struct") {
 		t.Error("generated code missing UserDiff struct")
 	}
-	if !strings.Contains(code, "ID struct") {
+	if !strings.Contains(code, "ID *struct") {
 		t.Error("generated code missing ID field")
 	}
-	if !strings.Contains(code, "Name struct") {
+	if !strings.Contains(code, "Name *struct") {
 		t.Error("generated code missing Name field")
 	}
 	if !strings.Contains(code, "func UserPatch") {

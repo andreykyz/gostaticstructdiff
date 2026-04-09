@@ -66,11 +66,17 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 		diff.Tags = &struct { Value []string }{}
 		diff.Tags.Value = new.Tags
 	}
+    if len(diff.Tags.Add) == 0 && len(diff.Tags.Modify) == 0 && len(diff.Tags.Del) == 0 {
+        diff.Tags = nil
+    }
 	// Slice comparison using reflect.DeepEqual
 	if !reflect.DeepEqual(original.Users, new.Users) {
 		diff.Users = &struct { Value []models.User }{}
 		diff.Users.Value = new.Users
 	}
+    if len(diff.Users.Add) == 0 && len(diff.Users.Modify) == 0 && len(diff.Users.Del) == 0 {
+        diff.Users = nil
+    }
 	// Map diff with nested struct values
 	diff.Metadata = &struct {
 		Add map[string]models.Metadata
@@ -130,6 +136,9 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 			diff.Categories.Del[k] = struct{}{}
 		}
 	}
+	if len(diff.Categories.Add) == 0 && len(diff.Categories.Del) == 0 {
+        diff.Categories = nil
+    }
 	return diff
 }
 

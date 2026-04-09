@@ -52,6 +52,9 @@ func MetadataPatch(original, new Metadata) MetadataDiff {
 			diff.Values.Del[k] = struct{}{}
 		}
 	}
+	if len(diff.Values.Add) == 0 && len(diff.Values.Del) == 0 {
+        diff.Values = nil
+    }
 	if (original.Score == nil && new.Score != nil) || (original.Score != nil && new.Score == nil) || (original.Score != nil && new.Score != nil && *original.Score != *new.Score) {
 		diff.Score = &struct { Value *float64 }{}
 		diff.Score.Value = new.Score

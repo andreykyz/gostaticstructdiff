@@ -4,28 +4,20 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 {{- range .Fields}}
 	{{- if eq .Category "basic"}}
 	if original.{{.Name}} != new.{{.Name}} {
-		diff.{{.Name}} = &struct { Value {{.Type}} }{}
 		diff.{{.Name}}.Value = new.{{.Name}}
 	}
 	{{- else if eq .Category "pointer"}}
 	if (original.{{.Name}} == nil && new.{{.Name}} != nil) || (original.{{.Name}} != nil && new.{{.Name}} == nil) || (original.{{.Name}} != nil && new.{{.Name}} != nil && *original.{{.Name}} != *new.{{.Name}}) {
-		diff.{{.Name}} = &struct { Value {{.Type}} }{}
 		diff.{{.Name}}.Value = new.{{.Name}}
 	}
 	{{- else if eq .Category "slice"}}
 	// Slice comparison using reflect.DeepEqual
 	if !reflect.DeepEqual(original.{{.Name}}, new.{{.Name}}) {
-		diff.{{.Name}} = &struct { Value {{.Type}} }{}
 		diff.{{.Name}}.Value = new.{{.Name}}
 	}
 	{{- else if eq .Category "map"}}
 	{{- if .ValueIsStruct}}
 	// Map diff with nested struct values
-	diff.{{.Name}} = &struct {
-		Add map[{{.KeyType}}]{{.ValueType}}
-		Modify map[{{.KeyType}}]{{.ValueDiffType}}
-		Del map[{{.KeyType}}]struct{}
-	}{}
 	diff.{{.Name}}.Add = make(map[{{.KeyType}}]{{.ValueType}})
 	diff.{{.Name}}.Modify = make(map[{{.KeyType}}]{{.ValueDiffType}})
 	diff.{{.Name}}.Del = make(map[{{.KeyType}}]struct{})
@@ -49,10 +41,6 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 	}
 	{{- else}}
 	// Map diff: compute added and deleted keys
-	diff.{{.Name}} = &struct {
-		Add map[{{.KeyType}}]{{.ValueType}}
-		Del map[{{.KeyType}}]struct{}
-	}{}
 	diff.{{.Name}}.Add = make(map[{{.KeyType}}]{{.ValueType}})
 	diff.{{.Name}}.Del = make(map[{{.KeyType}}]struct{})
 	// Added or modified keys
@@ -72,7 +60,6 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 	{{- else if eq .Category "struct"}}
 	// Nested struct diff
 	nestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
-	diff.{{.Name}} = &struct { Value {{.Type}}Diff }{}
 	diff.{{.Name}}.Value = nestedDiff
 	{{- end}}
 {{- end}}

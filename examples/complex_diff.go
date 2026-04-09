@@ -9,112 +9,74 @@ import (
 
 // ComplexStructDiff represents the diff of a ComplexStruct struct.
 type ComplexStructDiff struct {
-	Name struct {
+	Name *struct {
 		Value string
-		Set   bool
 	}
-	Count struct {
+	Count *struct {
 		Value int
-		Set   bool
 	}
-	Active struct {
+	Active *struct {
 		Value bool
-		Set   bool
 	}
-	Tags struct {
+	Tags *struct {
 		Value []string
-		Set   bool
 	}
-	Users struct {
+	Users *struct {
 		Value []models.User
-		Set   bool
 	}
-	Metadata struct {
+	Metadata *struct {
 		Add map[string]models.Metadata
 		Modify map[string]models.MetadataDiff
 		Del map[string]struct{}
-		Set bool
 	}
-	Inner struct {
+	Inner *struct {
 		Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` }
-		Set   bool
 	}
-	StaticUser struct {
+	StaticUser *struct {
 		Value models.UserDiff
-		Set   bool
 	}
-	Ref struct {
+	Ref *struct {
 		Value *models.User
-		Set   bool
 	}
-	Categories struct {
+	Categories *struct {
 		Add map[string][]string
 		Del map[string]struct{}
-		Set bool
 	}
 }
 
-// IsEmpty returns true if the diff contains no changes.
-func (d *ComplexStructDiff) IsEmpty() bool {
-	if d.Name.Set {
-		return false
-	}
-	if d.Count.Set {
-		return false
-	}
-	if d.Active.Set {
-		return false
-	}
-	if d.Tags.Set {
-		return false
-	}
-	if d.Users.Set {
-		return false
-	}
-	if d.Metadata.Set {
-		return false
-	}
-	if d.Inner.Set {
-		return false
-	}
-	if d.StaticUser.Set {
-		return false
-	}
-	if d.Ref.Set {
-		return false
-	}
-	if d.Categories.Set {
-		return false
-	}
-	return true
-}
+
 
 // ComplexStructPatch computes the diff between original and new ComplexStruct.
 func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	var diff ComplexStructDiff
 	if original.Name != new.Name {
+		diff.Name = &struct { Value string }{}
 		diff.Name.Value = new.Name
-		diff.Name.Set = true
 	}
 	if original.Count != new.Count {
+		diff.Count = &struct { Value int }{}
 		diff.Count.Value = new.Count
-		diff.Count.Set = true
 	}
 	if original.Active != new.Active {
+		diff.Active = &struct { Value bool }{}
 		diff.Active.Value = new.Active
-		diff.Active.Set = true
 	}
 	// Slice comparison using reflect.DeepEqual
 	if !reflect.DeepEqual(original.Tags, new.Tags) {
+		diff.Tags = &struct { Value []string }{}
 		diff.Tags.Value = new.Tags
-		diff.Tags.Set = true
 	}
 	// Slice comparison using reflect.DeepEqual
 	if !reflect.DeepEqual(original.Users, new.Users) {
+		diff.Users = &struct { Value []models.User }{}
 		diff.Users.Value = new.Users
-		diff.Users.Set = true
 	}
 	// Map diff with nested struct values
+	diff.Metadata = &struct {
+		Add map[string]models.Metadata
+		Modify map[string]models.MetadataDiff
+		Del map[string]struct{}
+	}{}
 	diff.Metadata.Add = make(map[string]models.Metadata)
 	diff.Metadata.Modify = make(map[string]models.MetadataDiff)
 	diff.Metadata.Del = make(map[string]struct{})
@@ -136,22 +98,23 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 			diff.Metadata.Del[k] = struct{}{}
 		}
 	}
-	if len(diff.Metadata.Add) > 0 || len(diff.Metadata.Modify) > 0 || len(diff.Metadata.Del) > 0 {
-		diff.Metadata.Set = true
-	}
 	if original.Inner != new.Inner {
+		diff.Inner = &struct { Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` } }{}
 		diff.Inner.Value = new.Inner
-		diff.Inner.Set = true
 	}
 	// Nested struct diff
 	nestedDiff := models.UserPatch(original.StaticUser, new.StaticUser)
+	diff.StaticUser = &struct { Value models.UserDiff }{}
 	diff.StaticUser.Value = nestedDiff
-	diff.StaticUser.Set = !nestedDiff.IsEmpty()
 	if (original.Ref == nil && new.Ref != nil) || (original.Ref != nil && new.Ref == nil) || (original.Ref != nil && new.Ref != nil && *original.Ref != *new.Ref) {
+		diff.Ref = &struct { Value *models.User }{}
 		diff.Ref.Value = new.Ref
-		diff.Ref.Set = true
 	}
 	// Map diff: compute added and deleted keys
+	diff.Categories = &struct {
+		Add map[string][]string
+		Del map[string]struct{}
+	}{}
 	diff.Categories.Add = make(map[string][]string)
 	diff.Categories.Del = make(map[string]struct{})
 	// Added or modified keys
@@ -167,31 +130,28 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 			diff.Categories.Del[k] = struct{}{}
 		}
 	}
-	if len(diff.Categories.Add) > 0 || len(diff.Categories.Del) > 0 {
-		diff.Categories.Set = true
-	}
 	return diff
 }
 
 // ApplyComplexStructDiff applies a diff to an original ComplexStruct.
 func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) ComplexStruct {
 	result := original
-	if diff.Name.Set {
+	if diff.Name != nil{
 		result.Name = diff.Name.Value
 	}
-	if diff.Count.Set {
+	if diff.Count != nil{
 		result.Count = diff.Count.Value
 	}
-	if diff.Active.Set {
+	if diff.Active != nil{
 		result.Active = diff.Active.Value
 	}
-	if diff.Tags.Set {
+	if diff.Tags != nil{
 		result.Tags = diff.Tags.Value
 	}
-	if diff.Users.Set {
+	if diff.Users != nil{
 		result.Users = diff.Users.Value
 	}
-	if diff.Metadata.Set {
+	if diff.Metadata != nil{
 		// Apply map diff
 		if result.Metadata == nil {
 			result.Metadata = make(map[string]models.Metadata)
@@ -212,16 +172,16 @@ func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) Comp
 			delete(result.Metadata, k)
 		}
 	}
-	if diff.Inner.Set {
+	if diff.Inner != nil{
 		result.Inner = diff.Inner.Value
 	}
-	if diff.StaticUser.Set {
+	if diff.StaticUser != nil{
 		result.StaticUser = models.ApplyUserDiff(original.StaticUser, diff.StaticUser.Value)
 	}
-	if diff.Ref.Set {
+	if diff.Ref != nil{
 		result.Ref = diff.Ref.Value
 	}
-	if diff.Categories.Set {
+	if diff.Categories != nil{
 		// Apply map diff
 		if result.Categories == nil {
 			result.Categories = make(map[string][]string)

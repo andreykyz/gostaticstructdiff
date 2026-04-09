@@ -72,7 +72,6 @@ func main() {
 	// Compute diff
 	fmt.Println("\n3. Computing diff using ComplexStructPatch...")
 	diff := examples.ComplexStructPatch(original, modified)
-	fmt.Printf("Diff computed: %+v\n", summarizeDiff(diff))
 
 	// Apply diff to original to get patched version
 	fmt.Println("\n4. Applying diff to original using ApplyComplexStructDiff...")
@@ -113,42 +112,6 @@ func printComplexStruct(cs *examples.ComplexStruct) {
 	for k, v := range cs.Categories {
 		fmt.Printf("    %s: %v\n", k, v)
 	}
-}
-
-// summarizeDiff provides a human-readable summary of the diff
-func summarizeDiff(diff examples.ComplexStructDiff) string {
-	changes := []string{}
-	if diff.Name.Set {
-		changes = append(changes, "Name")
-	}
-	if diff.Count.Set {
-		changes = append(changes, "Count")
-	}
-	if diff.Active.Set {
-		changes = append(changes, "Active")
-	}
-	if diff.Tags.Set {
-		changes = append(changes, "Tags")
-	}
-	if diff.Users.Set {
-		changes = append(changes, "Users")
-	}
-	if diff.Metadata.Set {
-		changes = append(changes, fmt.Sprintf("Metadata(%d added, %d deleted)", len(diff.Metadata.Add), len(diff.Metadata.Del)))
-	}
-	if diff.Inner.Set {
-		changes = append(changes, "Inner")
-	}
-	if diff.Ref.Set {
-		changes = append(changes, "Ref")
-	}
-	if diff.Categories.Set {
-		changes = append(changes, fmt.Sprintf("Categories(%d added, %d deleted)", len(diff.Categories.Add), len(diff.Categories.Del)))
-	}
-	if len(changes) == 0 {
-		return "No changes"
-	}
-	return fmt.Sprintf("Changed fields: %v", changes)
 }
 
 // deepEqualComplexStruct performs a simple equality check (simplified for demonstration)

@@ -4,59 +4,40 @@ package models
 
 // UserDiff represents the diff of a User struct.
 type UserDiff struct {
-	ID struct {
+	ID *struct {
 		Value int
-		Set   bool
 	}
-	Username struct {
+	Username *struct {
 		Value string
-		Set   bool
 	}
-	Email struct {
+	Email *struct {
 		Value string
-		Set   bool
 	}
-	Active struct {
+	Active *struct {
 		Value bool
-		Set   bool
 	}
 }
 
-// IsEmpty returns true if the diff contains no changes.
-func (d *UserDiff) IsEmpty() bool {
-	if d.ID.Set {
-		return false
-	}
-	if d.Username.Set {
-		return false
-	}
-	if d.Email.Set {
-		return false
-	}
-	if d.Active.Set {
-		return false
-	}
-	return true
-}
+
 
 // UserPatch computes the diff between original and new User.
 func UserPatch(original, new User) UserDiff {
 	var diff UserDiff
 	if original.ID != new.ID {
+		diff.ID = &struct { Value int }{}
 		diff.ID.Value = new.ID
-		diff.ID.Set = true
 	}
 	if original.Username != new.Username {
+		diff.Username = &struct { Value string }{}
 		diff.Username.Value = new.Username
-		diff.Username.Set = true
 	}
 	if original.Email != new.Email {
+		diff.Email = &struct { Value string }{}
 		diff.Email.Value = new.Email
-		diff.Email.Set = true
 	}
 	if original.Active != new.Active {
+		diff.Active = &struct { Value bool }{}
 		diff.Active.Value = new.Active
-		diff.Active.Set = true
 	}
 	return diff
 }
@@ -64,16 +45,16 @@ func UserPatch(original, new User) UserDiff {
 // ApplyUserDiff applies a diff to an original User.
 func ApplyUserDiff(original User, diff UserDiff) User {
 	result := original
-	if diff.ID.Set {
+	if diff.ID != nil{
 		result.ID = diff.ID.Value
 	}
-	if diff.Username.Set {
+	if diff.Username != nil{
 		result.Username = diff.Username.Value
 	}
-	if diff.Email.Set {
+	if diff.Email != nil{
 		result.Email = diff.Email.Value
 	}
-	if diff.Active.Set {
+	if diff.Active != nil{
 		result.Active = diff.Active.Value
 	}
 	return result

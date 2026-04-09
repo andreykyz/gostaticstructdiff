@@ -8,50 +8,35 @@ import (
 
 // MetadataDiff represents the diff of a Metadata struct.
 type MetadataDiff struct {
-	Label struct {
+	Label *struct {
 		Value string
-		Set   bool
 	}
-	Values struct {
+	Values *struct {
 		Add map[string]string
 		Del map[string]struct{}
-		Set bool
 	}
-	Score struct {
+	Score *struct {
 		Value *float64
-		Set   bool
 	}
-	Extra struct {
+	Extra *struct {
 		Value struct { Note string `structtomap:"note"`; Cost float64 `structtomap:"cost"` }
-		Set   bool
 	}
 }
 
-// IsEmpty returns true if the diff contains no changes.
-func (d *MetadataDiff) IsEmpty() bool {
-	if d.Label.Set {
-		return false
-	}
-	if d.Values.Set {
-		return false
-	}
-	if d.Score.Set {
-		return false
-	}
-	if d.Extra.Set {
-		return false
-	}
-	return true
-}
+
 
 // MetadataPatch computes the diff between original and new Metadata.
 func MetadataPatch(original, new Metadata) MetadataDiff {
 	var diff MetadataDiff
 	if original.Label != new.Label {
+		diff.Label = &struct { Value string }{}
 		diff.Label.Value = new.Label
-		diff.Label.Set = true
 	}
 	// Map diff: compute added and deleted keys
+	diff.Values = &struct {
+		Add map[string]string
+		Del map[string]struct{}
+	}{}
 	diff.Values.Add = make(map[string]string)
 	diff.Values.Del = make(map[string]struct{})
 	// Added or modified keys
@@ -67,16 +52,13 @@ func MetadataPatch(original, new Metadata) MetadataDiff {
 			diff.Values.Del[k] = struct{}{}
 		}
 	}
-	if len(diff.Values.Add) > 0 || len(diff.Values.Del) > 0 {
-		diff.Values.Set = true
-	}
 	if (original.Score == nil && new.Score != nil) || (original.Score != nil && new.Score == nil) || (original.Score != nil && new.Score != nil && *original.Score != *new.Score) {
+		diff.Score = &struct { Value *float64 }{}
 		diff.Score.Value = new.Score
-		diff.Score.Set = true
 	}
 	if original.Extra != new.Extra {
+		diff.Extra = &struct { Value struct { Note string `structtomap:"note"`; Cost float64 `structtomap:"cost"` } }{}
 		diff.Extra.Value = new.Extra
-		diff.Extra.Set = true
 	}
 	return diff
 }
@@ -84,10 +66,10 @@ func MetadataPatch(original, new Metadata) MetadataDiff {
 // ApplyMetadataDiff applies a diff to an original Metadata.
 func ApplyMetadataDiff(original Metadata, diff MetadataDiff) Metadata {
 	result := original
-	if diff.Label.Set {
+	if diff.Label != nil{
 		result.Label = diff.Label.Value
 	}
-	if diff.Values.Set {
+	if diff.Values != nil{
 		// Apply map diff
 		if result.Values == nil {
 			result.Values = make(map[string]string)
@@ -99,10 +81,10 @@ func ApplyMetadataDiff(original Metadata, diff MetadataDiff) Metadata {
 			delete(result.Values, k)
 		}
 	}
-	if diff.Score.Set {
+	if diff.Score != nil{
 		result.Score = diff.Score.Value
 	}
-	if diff.Extra.Set {
+	if diff.Extra != nil{
 		result.Extra = diff.Extra.Value
 	}
 	return result

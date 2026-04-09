@@ -95,22 +95,29 @@ type User struct {
 ### Generated Diff:
 ```go
 type UserDiff struct {
-    ID struct {
+    ID *struct {
         Value int
-        Set   bool
     }
-    Username struct {
+    Username *struct {
         Value string
-        Set   bool
     }
-    // ... more fields
+    Email *struct {
+        Value string
+    }
+    Active *struct {
+        Value bool
+    }
 }
 
 func UserPatch(original, new User) UserDiff {
     var diff UserDiff
     if original.ID != new.ID {
+        diff.ID = &struct { Value int }{}
         diff.ID.Value = new.ID
-        diff.ID.Set = true
+    }
+    if original.Username != new.Username {
+        diff.Username = &struct { Value string }{}
+        diff.Username.Value = new.Username
     }
     // ... more field comparisons
     return diff
@@ -118,8 +125,11 @@ func UserPatch(original, new User) UserDiff {
 
 func ApplyUserDiff(original User, diff UserDiff) User {
     result := original
-    if diff.ID.Set {
+    if diff.ID != nil {
         result.ID = diff.ID.Value
+    }
+    if diff.Username != nil {
+        result.Username = diff.Username.Value
     }
     // ... more field applications
     return result

@@ -17,25 +17,29 @@ var templateFS embed.FS
 
 // FieldTemplateData holds data for a field in the template.
 type FieldTemplateData struct {
-	Name               string
-	Type               string
-	Category           string
-	KeyType            string
-	ValueType          string
-	ValueIsStruct      bool
-	ValueDiffType      string
-	ValueTypePackage   string // package of ValueType (empty if same package)
-	ValueTypeName      string // name of ValueType without package
-	ValueDiffFunc      string // qualified function name to apply diff (e.g., "models.ApplyMetadataDiff")
-	ElementIsStruct    bool
-	ElementDiffType    string
-	ElementTypePackage string // package of ElementType (empty if same package)
-	ElementTypeName    string // name of ElementType without package
-	ElementDiffFunc    string // qualified function name to apply diff for slice elements
-	StructTypePackage  string // package of struct type (empty if same package)
-	StructTypeName     string // name of struct type without package
-	StructDiffFunc     string // qualified function name to apply diff for struct fields (e.g., "models.ApplyUserDiff")
-	IsAnonymous        bool
+	Name                   string
+	Type                   string
+	Category               string
+	KeyType                string
+	ValueType              string
+	ValueIsStruct          bool
+	ValueDiffType          string
+	ValueTypePackage       string // package of ValueType (empty if same package)
+	ValueTypeName          string // name of ValueType without package
+	ValueDiffFunc          string // qualified function name to apply diff (e.g., "models.ApplyMetadataDiff")
+	ElementIsStruct        bool
+	ElementDiffType        string
+	ElementTypePackage     string // package of ElementType (empty if same package)
+	ElementTypeName        string // name of ElementType without package
+	ElementDiffFunc        string // qualified function name to apply diff for slice elements
+	StructTypePackage      string // package of struct type (empty if same package)
+	StructTypeName         string // name of struct type without package
+	StructDiffFunc         string // qualified function name to apply diff for struct fields (e.g., "models.ApplyUserDiff")
+	PointerElementIsStruct bool
+	PointerElementType     string // underlying struct type for pointer-to-struct (e.g., "models.User")
+	PointerDiffType        string // diff type for pointer-to-struct (e.g., "models.UserDiff")
+	PointerDiffFunc        string // apply diff function for pointer-to-struct (e.g., "models.ApplyUserDiff")
+	IsAnonymous            bool
 }
 
 // StructTemplateData holds data for a struct in the template.
@@ -167,6 +171,11 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 			isAnonymous = true
 		}
 
+		// Detect pointer to struct
+		if typeInfo.Category == types.CategoryPointer && typeInfo.Element != nil && typeInfo.Element.Category == types.CategoryStruct {
+			category = "pointerStruct"
+		}
+
 		// Treat unknown types as slice (use reflect.DeepEqual)
 		if typeInfo.Category == types.CategoryUnknown {
 			category = "slice"
@@ -212,6 +221,20 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 				} else {
 					fieldData.ElementDiffFunc = "Apply" + name + "Diff"
 				}
+			}
+		}
+
+		// For pointer-to-struct types, extract element type
+		if typeInfo.Category == types.CategoryPointer && typeInfo.Element != nil && typeInfo.Element.Category == types.CategoryStruct {
+			fieldData.PointerElementIsStruct = true
+			fieldData.PointerElementType = typeInfo.Element.TypeString
+			fieldData.PointerDiffType = typeInfo.Element.TypeString + "Diff"
+			// Compute package and name for apply function
+			pkg, name := splitType(typeInfo.Element.TypeString)
+			if pkg != "" {
+				fieldData.PointerDiffFunc = pkg + ".Apply" + name + "Diff"
+			} else {
+				fieldData.PointerDiffFunc = "Apply" + name + "Diff"
 			}
 		}
 

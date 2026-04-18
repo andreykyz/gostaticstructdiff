@@ -229,6 +229,19 @@ func DetermineDiffStrategy(typeInfo *TypeInfo) DiffStrategy {
 			},
 		}
 	case CategoryPointer:
+		// Check if pointer points to a struct
+		if typeInfo.Element != nil && typeInfo.Element.Category == CategoryStruct {
+			return DiffStrategy{
+				TemplateName: "pointerStruct",
+				Data: map[string]interface{}{
+					"Type":     typeInfo.TypeString,
+					"Elem":     typeInfo.Element,
+					"ElemType": typeInfo.Element.TypeString,
+					"DiffType": typeInfo.Element.TypeString + "Diff",
+					"DiffFunc": "Apply" + typeInfo.Element.TypeString + "Diff",
+				},
+			}
+		}
 		return DiffStrategy{
 			TemplateName: "pointer",
 			Data: map[string]interface{}{

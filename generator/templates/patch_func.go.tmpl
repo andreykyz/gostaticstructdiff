@@ -13,6 +13,35 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 		diff.{{.Name}} = &struct { Value {{.Type}} }{}
 		diff.{{.Name}}.Value = new.{{.Name}}
 	}
+	{{- else if eq .Category "pointerStruct"}}
+	// Pointer-to-struct diff
+	if original.{{.Name}} == nil && new.{{.Name}} == nil {
+		// both nil, no change
+	} else if original.{{.Name}} == nil && new.{{.Name}} != nil {
+		// added pointer
+		diff.{{.Name}} = &struct {
+			NewValue {{.Type}}
+			Diff     *{{.PointerDiffType}}
+		}{}
+		diff.{{.Name}}.NewValue = new.{{.Name}}
+	} else if original.{{.Name}} != nil && new.{{.Name}} == nil {
+		// removed pointer
+		diff.{{.Name}} = &struct {
+			NewValue {{.Type}}
+			Diff     *{{.PointerDiffType}}
+		}{}
+		diff.{{.Name}}.NewValue = nil
+	} else {
+		// both non-nil, compare content
+		if !reflect.DeepEqual(*original.{{.Name}}, *new.{{.Name}}) {
+			nestedDiff := {{.PointerElementType}}Patch(*original.{{.Name}}, *new.{{.Name}})
+			diff.{{.Name}} = &struct {
+				NewValue {{.Type}}
+				Diff     *{{.PointerDiffType}}
+			}{}
+			diff.{{.Name}}.Diff = &nestedDiff
+		}
+	}
 	{{- else if eq .Category "slice"}}
 	// Slice comparison using reflect.DeepEqual
 	if !reflect.DeepEqual(original.{{.Name}}, new.{{.Name}}) {
@@ -95,6 +124,20 @@ func Apply{{.Name}}Diff(original {{.Name}}, diff {{.Name}}Diff) {{.Name}} {
 		result.{{.Name}} = diff.{{.Name}}.Value
 		{{- else if eq .Category "pointer"}}
 		result.{{.Name}} = diff.{{.Name}}.Value
+		{{- else if eq .Category "pointerStruct"}}
+		if diff.{{.Name}}.NewValue != nil {
+			result.{{.Name}} = diff.{{.Name}}.NewValue
+		} else if diff.{{.Name}}.Diff != nil {
+			// Apply diff to existing pointer (must be non-nil)
+			if original.{{.Name}} == nil {
+				// If original is nil, create zero value
+				zero := {{.PointerElementType}}{}
+				result.{{.Name}} = &zero
+			} else {
+				result.{{.Name}} = original.{{.Name}}
+			}
+			*result.{{.Name}} = {{.PointerDiffFunc}}(*original.{{.Name}}, *diff.{{.Name}}.Diff)
+		}
 		{{- else if eq .Category "slice"}}
 		result.{{.Name}} = diff.{{.Name}}.Value
 		{{- else if eq .Category "map"}}

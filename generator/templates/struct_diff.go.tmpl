@@ -6,6 +6,9 @@ type {{.Name}}Diff struct {
 		Value {{.Type}}
 		{{- else if eq .Category "pointer"}}
 		Value {{.Type}}
+		{{- else if eq .Category "pointerStruct"}}
+		NewValue {{.Type}}
+		Diff     *{{.PointerDiffType}}
 		{{- else if eq .Category "slice"}}
 		Value {{.Type}}
 		{{- else if eq .Category "map"}}

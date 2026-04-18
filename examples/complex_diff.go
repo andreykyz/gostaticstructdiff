@@ -36,13 +36,15 @@ type ComplexStructDiff struct {
 		Value models.UserDiff
 	}
 	Ref *struct {
-		Value *models.User
+		NewValue *models.User
+		Diff     *models.UserDiff
 	}
 	Categories *struct {
 		Add map[string][]string
 		Del map[string]struct{}
 	}
 }
+
 
 
 
@@ -66,17 +68,11 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 		diff.Tags = &struct { Value []string }{}
 		diff.Tags.Value = new.Tags
 	}
-    if len(diff.Tags.Add) == 0 && len(diff.Tags.Modify) == 0 && len(diff.Tags.Del) == 0 {
-        diff.Tags = nil
-    }
 	// Slice comparison using reflect.DeepEqual
 	if !reflect.DeepEqual(original.Users, new.Users) {
 		diff.Users = &struct { Value []models.User }{}
 		diff.Users.Value = new.Users
 	}
-    if len(diff.Users.Add) == 0 && len(diff.Users.Modify) == 0 && len(diff.Users.Del) == 0 {
-        diff.Users = nil
-    }
 	// Map diff with nested struct values
 	diff.Metadata = &struct {
 		Add map[string]models.Metadata
@@ -104,6 +100,9 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 			diff.Metadata.Del[k] = struct{}{}
 		}
 	}
+	if len(diff.Metadata.Add) == 0 && len(diff.Metadata.Modify) == 0 && len(diff.Metadata.Del) == 0 {
+        diff.Metadata = nil
+    }
 	if original.Inner != new.Inner {
 		diff.Inner = &struct { Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` } }{}
 		diff.Inner.Value = new.Inner
@@ -112,9 +111,33 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	nestedDiff := models.UserPatch(original.StaticUser, new.StaticUser)
 	diff.StaticUser = &struct { Value models.UserDiff }{}
 	diff.StaticUser.Value = nestedDiff
-	if (original.Ref == nil && new.Ref != nil) || (original.Ref != nil && new.Ref == nil) || (original.Ref != nil && new.Ref != nil && *original.Ref != *new.Ref) {
-		diff.Ref = &struct { Value *models.User }{}
-		diff.Ref.Value = new.Ref
+	// Pointer-to-struct diff
+	if original.Ref == nil && new.Ref == nil {
+		// both nil, no change
+	} else if original.Ref == nil && new.Ref != nil {
+		// added pointer
+		diff.Ref = &struct {
+			NewValue *models.User
+			Diff     *models.UserDiff
+		}{}
+		diff.Ref.NewValue = new.Ref
+	} else if original.Ref != nil && new.Ref == nil {
+		// removed pointer
+		diff.Ref = &struct {
+			NewValue *models.User
+			Diff     *models.UserDiff
+		}{}
+		diff.Ref.NewValue = nil
+	} else {
+		// both non-nil, compare content
+		if !reflect.DeepEqual(*original.Ref, *new.Ref) {
+			nestedDiff := models.UserPatch(*original.Ref, *new.Ref)
+			diff.Ref = &struct {
+				NewValue *models.User
+				Diff     *models.UserDiff
+			}{}
+			diff.Ref.Diff = &nestedDiff
+		}
 	}
 	// Map diff: compute added and deleted keys
 	diff.Categories = &struct {
@@ -188,7 +211,19 @@ func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) Comp
 		result.StaticUser = models.ApplyUserDiff(original.StaticUser, diff.StaticUser.Value)
 	}
 	if diff.Ref != nil{
-		result.Ref = diff.Ref.Value
+		if diff.Ref.NewValue != nil {
+			result.Ref = diff.Ref.NewValue
+		} else if diff.Ref.Diff != nil {
+			// Apply diff to existing pointer (must be non-nil)
+			if original.Ref == nil {
+				// If original is nil, create zero value
+				zero := models.User{}
+				result.Ref = &zero
+			} else {
+				result.Ref = original.Ref
+			}
+			*result.Ref = models.ApplyUserDiff(*original.Ref, *diff.Ref.Diff)
+		}
 	}
 	if diff.Categories != nil{
 		// Apply map diff

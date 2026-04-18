@@ -28,7 +28,7 @@ gostaticstructdiff/
 │   ├── struct_diff.go.tmpl
 │   └── patch_func.go.tmpl
 ├── examples/                           # Example usage
-│   ├── cmd/main.go                     # Example program demonstrating diff/patch
+│   ├── cmd/simple/main.go              # Example program demonstrating diff/patch
 │   ├── models/user.go                  # Simple struct example
 │   ├── models/user_diff.go             # Generated diff code
 │   ├── complex.go                      # Complex struct with nested types

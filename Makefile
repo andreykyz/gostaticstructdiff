@@ -39,7 +39,7 @@ test:
 # Run the example program
 example: generate_example
 	@echo "Running example..."
-	cd $(EXAMPLES_DIR)/cmd && go run main.go
+	cd $(EXAMPLES_DIR)/cmd/simple && go run main.go
 
 # Phony targets
 .PHONY: all build clean generate test example

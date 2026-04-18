@@ -32,7 +32,7 @@ gostaticstructdiff/
 │   ├── struct_diff.go.tmpl
 │   └── patch_func.go.tmpl
 ├── examples/                           # Example usage
-│   ├── cmd/main.go                     # Example program demonstrating diff/patch
+│   ├── cmd/simple/main.go              # Example program demonstrating diff/patch
 │   ├── models/user.go                  # Simple struct example
 │   ├── models/user_diff.go             # Generated diff code
 │   ├── complex.go                      # Complex struct with nested types
@@ -160,6 +160,18 @@ func ApplyUserDiff(original User, diff UserDiff) User {
 2. Examine `doc_for_ai/` for development guidance
 3. Check existing implementation in `parser/`, `generator/`, and `types/` directories
 4. Use `go generate` integration for automated code generation
+
+## Makefile Commands
+
+The project includes a `Makefile` with useful targets for development and testing:
+
+- `make build` – Build the CLI binary (`gostaticstructdiff`)
+- `make clean` – Remove generated binary and example diff files
+- `make generate_example` – Generate diff files for the example structs (requires built binary)
+- `make test` – Run all Go tests
+- `make example` – Generate example diffs and run the example program (located at `examples/cmd/simple/main.go`)
+
+These targets automate common workflows and ensure consistency.
 
 ## Notes
 - The project uses Go modules (see `go.mod`)

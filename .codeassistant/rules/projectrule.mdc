@@ -5,15 +5,16 @@ name: projectrule
 # gostaticstructdiff - Project Context for AI Code Agent
 
 ## Project Overview
-`gostaticstructdiff` is a Go code generation tool that creates type-safe diff structures and patch functions from Go structs annotated with `structtomap` tags. It enables efficient structural diffing and patching operations for applications that need to track changes between versions of data structures.
+`gostaticstructdiff` is a Go code generation tool that creates type-safe diff structures and patch functions from Go structs annotated with configurable tags (default: `structtomap`). It enables efficient structural diffing and patching operations for applications that need to track changes between versions of data structures.
 
 ## Core Functionality
-- **Input**: Go source file containing structs with `structtomap` tags
+- **Input**: Go source file(s) containing structs with configurable tags (default: `structtomap`). Multiple files can be specified as comma-separated list.
 - **Output**: Generated Go file with `_diff` suffix containing:
   - `StructNameDiff` type definitions with field-level change tracking
   - `StructNamePatch(original, new StructName) StructNameDiff` function to compute diffs
   - `ApplyStructNameDiff(original StructName, diff StructNameDiff) StructName` function to apply diffs
-- **Type Support**: Basic types, pointers, slices, maps, nested structs, and embedded types
+- **Type Support**: Basic types, pointers, slices, maps, nested structs (including recursion for map values and slice elements), embedded types, wrapped primitive types (type aliases), and map aliases (via reflect.DeepEqual fallback)
+- **Flexibility**: Custom tag selection via `-tag` flag; include all fields via `-all` flag; multifile input support
 
 ## Project Structure
 ```
@@ -31,42 +32,58 @@ gostaticstructdiff/
 │   ├── struct_diff.go.tmpl
 │   └── patch_func.go.tmpl
 ├── examples/                           # Example usage
+│   ├── cmd/main.go                     # Example program demonstrating diff/patch
 │   ├── models/user.go                  # Simple struct example
 │   ├── models/user_diff.go             # Generated diff code
 │   ├── complex.go                      # Complex struct with nested types
 │   └── complex_diff.go                 # Generated complex diff
-└── doc_for_ai/                         # AI development guides
+└── debugging/                          # Directory for storing debug code
 ```
 
 ## Key Implementation Details
 
 ### 1. Parser (`parser/parser.go`)
 - Uses Go's `go/ast` package to parse source files
-- Extracts structs that have at least one field with `structtomap` tag
+- Extracts structs that have at least one field with the specified tag (default: `structtomap`)
+- Supports `-all` flag to include all fields regardless of tags
 - Returns `StructInfo` with field names, types, and tags
+- Collects all type definitions (`typeDefs`) within the parsed file for intra‑file type resolution
 - Handles imports from the source file
+- **Multifile Support**: The CLI processes multiple files by calling the parser for each file and merging results
 
 ### 2. Generator (`generator/generator.go`)
 - Uses Go's `text/template` package for code generation
 - Different templates for different field types (basic, slice, map, pointer, struct)
-- Generates diff structs with nested `Value` and `Set` fields
-- Creates patch functions with proper type comparisons
+- Maps unknown types to slice template (using `reflect.DeepEqual`) for safe comparison
+- Generates diff structs with nested `Value` and `Set` fields (or `Add`/`Del` for maps)
+- For map values that are structs (when detected), generates separate `Add` (whole values for added keys) and `Modify` (nested diffs for modified keys) fields, enabling granular patching.
+- Creates patch functions with proper type comparisons (`!=` for basic, `reflect.DeepEqual` for slices and unknown types, key‑wise diff for maps)
+- Adds `reflect` import when needed (slices, maps, unknown types)
+- Uses intra‑file type definitions (`typeDefs`) for accurate classification
+- **Multifile Support**: Can generate combined diff code for structs collected from multiple input files
 
 ### 3. Type System (`types/types.go`)
-- Categorizes field types for appropriate diff strategy
-- Handles nested struct recursion
+- Categorizes field types for appropriate diff strategy (basic, pointer, slice, map, struct, unknown)
+- Handles nested struct recursion (including map values and slice elements that are structs; map values that are structs generate nested diffs when the struct type is known)
+- Resolves wrapped primitive types and type aliases using intra‑file type definitions (`typeDefs`)
+- Treats unknown qualified identifiers as `CategoryUnknown` (fallback to `reflect.DeepEqual`)
 - Manages imports for generated code
+- **Multifile Support**: Works with merged type definitions from multiple input files for accurate type classification
 
 ### 4. CLI Interface
 ```bash
 gostaticstructdiff -input <file.go> -output <file_diff.go> [options]
 ```
 Options:
-- `-input`: Input Go file (required)
-- `-output`: Output file (default: `<input>_diff.go`)
+- `-input`: Input Go file(s), comma-separated (required)
+- `-output`: Output file (default: `<first_input>_diff.go`)
 - `-struct`: Specific struct to generate (default: all)
+- `-tag`: Tag key to look for (default: `structtomap`)
+- `-all`: Include all fields regardless of tags (default: false)
 - `-verbose`: Enable verbose logging
 - `-version`: Show version
+
+**Multifile Input**: Multiple Go files can be specified as a comma-separated list. All files must belong to the same package. The tool will parse each file, collect structs with the specified tag, merge imports and type definitions, and generate a single combined diff file.
 
 ## Generated Code Pattern
 
@@ -83,22 +100,29 @@ type User struct {
 ### Generated Diff:
 ```go
 type UserDiff struct {
-    ID struct {
+    ID *struct {
         Value int
-        Set   bool
     }
-    Username struct {
+    Username *struct {
         Value string
-        Set   bool
     }
-    // ... more fields
+    Email *struct {
+        Value string
+    }
+    Active *struct {
+        Value bool
+    }
 }
 
 func UserPatch(original, new User) UserDiff {
     var diff UserDiff
     if original.ID != new.ID {
+        diff.ID = &struct { Value int }{}
         diff.ID.Value = new.ID
-        diff.ID.Set = true
+    }
+    if original.Username != new.Username {
+        diff.Username = &struct { Value string }{}
+        diff.Username.Value = new.Username
     }
     // ... more field comparisons
     return diff
@@ -106,8 +130,11 @@ func UserPatch(original, new User) UserDiff {
 
 func ApplyUserDiff(original User, diff UserDiff) User {
     result := original
-    if diff.ID.Set {
+    if diff.ID != nil {
         result.ID = diff.ID.Value
+    }
+    if diff.Username != nil {
+        result.Username = diff.Username.Value
     }
     // ... more field applications
     return result
@@ -129,7 +156,7 @@ func ApplyUserDiff(original User, diff UserDiff) User {
 5. **Error Handling**: Provide clear error messages for invalid input
 
 ## Quick Start for AI Agent
-1. Review the `examples/` directory to understand input/output patterns
+1. Review the `examples/` directory to understand input/output patterns, and the `examples_model/` directory for a real-world DataCenter example
 2. Examine `doc_for_ai/` for development guidance
 3. Check existing implementation in `parser/`, `generator/`, and `types/` directories
 4. Use `go generate` integration for automated code generation
@@ -139,8 +166,12 @@ func ApplyUserDiff(original User, diff UserDiff) User {
 - All generated code should have zero runtime dependencies
 - Follow Go conventions and best practices
 - Maintain backward compatibility where possible
+- Developers can store debug code in `debugging/` directory
+
+## Commit all changes in source code base
 
 ## Commit Conventions for AI Agents
+
 When making changes to the codebase, AI agents should follow these commit message guidelines:
 
 ### Commit Message Format

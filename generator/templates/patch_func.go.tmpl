@@ -19,9 +19,6 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 		diff.{{.Name}} = &struct { Value {{.Type}} }{}
 		diff.{{.Name}}.Value = new.{{.Name}}
 	}
-    if len(diff.{{.Name}}.Add) == 0 && len(diff.{{.Name}}.Modify) == 0 && len(diff.{{.Name}}.Del) == 0 {
-        diff.{{.Name}} = nil
-    }
 	{{- else if eq .Category "map"}}
 	{{- if .ValueIsStruct}}
 	// Map diff with nested struct values
@@ -51,6 +48,9 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 			diff.{{.Name}}.Del[k] = struct{}{}
 		}
 	}
+	if len(diff.{{.Name}}.Add) == 0 && len(diff.{{.Name}}.Modify) == 0 && len(diff.{{.Name}}.Del) == 0 {
+        diff.{{.Name}} = nil
+    }
 	{{- else}}
 	// Map diff: compute added and deleted keys
 	diff.{{.Name}} = &struct {

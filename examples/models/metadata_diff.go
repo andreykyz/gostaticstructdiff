@@ -25,6 +25,7 @@ type MetadataDiff struct {
 
 
 
+
 // MetadataPatch computes the diff between original and new Metadata.
 func MetadataPatch(original, new Metadata) MetadataDiff {
 	var diff MetadataDiff

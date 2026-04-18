@@ -20,6 +20,7 @@ type UserDiff struct {
 
 
 
+
 // UserPatch computes the diff between original and new User.
 func UserPatch(original, new User) UserDiff {
 	var diff UserDiff

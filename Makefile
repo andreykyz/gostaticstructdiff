@@ -41,5 +41,10 @@ example: generate_example
 	@echo "Running example..."
 	cd $(EXAMPLES_DIR)/cmd/simple && go run main.go
 
+# Run the random generation example program
+example_gen: generate_example
+	@echo "Running random generation example..."
+	cd $(EXAMPLES_DIR)/cmd/gen && go run main.go
+
 # Phony targets
-.PHONY: all build clean generate test example
+.PHONY: all build clean generate test example example_gen

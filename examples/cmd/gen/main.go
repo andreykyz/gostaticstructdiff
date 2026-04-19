@@ -52,25 +52,31 @@ func main() {
 	fmt.Println("3. Computing diffs between consecutive seeds and verifying patch...")
 	successCount := 0
 	for i := 0; i < len(seeds)-1; i++ {
-		seedA, seedB := seeds[i], seeds[i+1]
-		a, b := structs[i], structs[i+1]
-		fmt.Printf("   Pair %d → %d (seeds %d → %d): ", i, i+1, seedA, seedB)
+		for j := 0; j < len(seeds)-1; j++ {
+			if j == i {
+				continue
+			}
+			seedA, seedB := seeds[i], seeds[j]
 
-		// Compute diff
-		diff := examples.ComplexStructPatch(a, b)
+			a, b := structs[i], structs[j]
+			fmt.Printf("   Pair %d → %d (seeds %d → %d): ", i, j, seedA, seedB)
 
-		// Apply diff to a
-		patched := examples.ApplyComplexStructDiff(a, diff)
+			// Compute diff
+			diff := examples.ComplexStructPatch(a, b)
 
-		// Verify patched equals b
-		if reflect.DeepEqual(patched, b) {
-			fmt.Println("✓ SUCCESS")
-			successCount++
-		} else {
-			fmt.Println("✗ FAILURE")
-			fmt.Printf("      Patched struct does not match target for seeds %d → %d\n", seedA, seedB)
-			// Optional: print some differences
-			printDiffSummary(diff)
+			// Apply diff to a
+			patched := examples.ApplyComplexStructDiff(a, diff)
+
+			// Verify patched equals b
+			if reflect.DeepEqual(patched, b) {
+				fmt.Println("✓ SUCCESS")
+				successCount++
+			} else {
+				fmt.Println("✗ FAILURE")
+				fmt.Printf("      Patched struct does not match target for seeds %d → %d\n", seedA, seedB)
+				// Optional: print some differences
+				printDiffSummary(diff)
+			}
 		}
 	}
 	fmt.Printf("   Result: %d/%d pairs passed.\n", successCount, len(seeds)-1)

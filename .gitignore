@@ -1,1 +1,3 @@
 gostaticstructdiff
+vendor
+examples/cmd/gen/gen

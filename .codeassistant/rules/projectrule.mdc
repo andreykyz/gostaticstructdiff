@@ -33,6 +33,7 @@ gostaticstructdiff/
 │   └── patch_func.go.tmpl
 ├── examples/                           # Example usage
 │   ├── cmd/simple/main.go              # Example program demonstrating diff/patch
+│   ├── cmd/gen/main.go                 # Example using random generation with debugging.GetTestStruct
 │   ├── models/user.go                  # Simple struct example
 │   ├── models/user_diff.go             # Generated diff code
 │   ├── complex.go                      # Complex struct with nested types
@@ -169,7 +170,7 @@ The project includes a `Makefile` with useful targets for development and testin
 - `make clean` – Remove generated binary and example diff files
 - `make generate_example` – Generate diff files for the example structs (requires built binary)
 - `make test` – Run all Go tests
-- `make example` – Generate example diffs and run the example program (located at `examples/cmd/simple/main.go`)
+- `make example` – Generate example diffs and run the simple example program (located at `examples/cmd/simple/main.go`). For a random generation example, see `examples/cmd/gen/main.go`.
 
 These targets automate common workflows and ensure consistency.
 

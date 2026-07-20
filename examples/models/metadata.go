@@ -1,5 +1,7 @@
 package models
 
+import "github.com/andreykyz/gostaticstructdiff/examples/models/nested"
+
 // Metadata represents additional key‑value data with mixed types.
 type Metadata struct {
 	Label  string            `structtomap:"label"`
@@ -10,3 +12,5 @@ type Metadata struct {
 		Cost float64 `structtomap:"cost"`
 	} `structtomap:"extra"`
 }
+
+type Metadatas map[nested.ID]Metadata

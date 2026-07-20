@@ -3,6 +3,7 @@
 package models
 
 import (
+	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
 	"reflect"
 )
 

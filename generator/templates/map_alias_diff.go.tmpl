@@ -1,0 +1,11 @@
+// {{.Name}}Diff represents the diff of a {{.Name}} map.
+type {{.Name}}Diff struct {
+	{{- if .ValueIsStruct}}
+	Add    map[{{.KeyType}}]{{.ValueType}}
+	Modify map[{{.KeyType}}]{{.ValueDiffType}}
+	Del    map[{{.KeyType}}]struct{}
+	{{- else}}
+	Add map[{{.KeyType}}]{{.ValueType}}
+	Del map[{{.KeyType}}]struct{}
+	{{- end}}
+}

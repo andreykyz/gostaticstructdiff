@@ -1,0 +1,77 @@
+// {{.Name}}Patch computes the diff between original and new {{.Name}}.
+func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
+	var diff {{.Name}}Diff
+	{{- if .ValueIsStruct}}
+	diff.Add = make(map[{{.KeyType}}]{{.ValueType}})
+	diff.Modify = make(map[{{.KeyType}}]{{.ValueDiffType}})
+	diff.Del = make(map[{{.KeyType}}]struct{})
+	// Added or modified keys
+	for k, v := range new {
+		oldV, ok := original[k]
+		if !ok {
+			// added key
+			diff.Add[k] = v
+		} else if !reflect.DeepEqual(oldV, v) {
+			// modified key, compute diff
+			nestedDiff := {{.ValueType}}Patch(oldV, v)
+			diff.Modify[k] = nestedDiff
+		}
+	}
+	// Deleted keys
+	for k := range original {
+		if _, ok := new[k]; !ok {
+			diff.Del[k] = struct{}{}
+		}
+	}
+	if len(diff.Add) == 0 && len(diff.Modify) == 0 && len(diff.Del) == 0 {
+		diff = {{.Name}}Diff{}
+	}
+	{{- else}}
+	diff.Add = make(map[{{.KeyType}}]{{.ValueType}})
+	diff.Del = make(map[{{.KeyType}}]struct{})
+	// Added or modified keys
+	for k, v := range new {
+		oldV, ok := original[k]
+		if !ok || !reflect.DeepEqual(oldV, v) {
+			diff.Add[k] = v
+		}
+	}
+	// Deleted keys
+	for k := range original {
+		if _, ok := new[k]; !ok {
+			diff.Del[k] = struct{}{}
+		}
+	}
+	if len(diff.Add) == 0 && len(diff.Del) == 0 {
+		diff = {{.Name}}Diff{}
+	}
+	{{- end}}
+	return diff
+}
+
+// Apply{{.Name}}Diff applies a diff to an original {{.Name}}.
+func Apply{{.Name}}Diff(original {{.Name}}, diff {{.Name}}Diff) {{.Name}} {
+	if original == nil {
+		original = make({{.Name}})
+	}
+	{{- if .ValueIsStruct}}
+	for k, v := range diff.Add {
+		original[k] = v
+	}
+	for k, v := range diff.Modify {
+		existing, ok := original[k]
+		if !ok {
+			existing = {{.ValueType}}{}
+		}
+		original[k] = {{.ValueDiffFunc}}(existing, v)
+	}
+	{{- else}}
+	for k, v := range diff.Add {
+		original[k] = v
+	}
+	{{- end}}
+	for k := range diff.Del {
+		delete(original, k)
+	}
+	return original
+}

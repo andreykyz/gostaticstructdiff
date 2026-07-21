@@ -145,6 +145,15 @@ func Classify(expr ast.Expr, knownStructs map[string]bool, typeDefs map[string]a
 						Value:      inner.Value,
 					}
 				}
+				// For wrapped primitives (type alias to basic type like 'type GGID string'),
+				// preserve the qualified type string (e.g., "nested.GGID") for correct
+				// code generation as a basic comparable type.
+				if inner.Category == CategoryBasic {
+					return &TypeInfo{
+						Category:   CategoryBasic,
+						TypeString: typeStr,
+					}
+				}
 				// For other type aliases (e.g., type alias to struct), return as-is
 				return inner
 			}

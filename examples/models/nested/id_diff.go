@@ -2,6 +2,8 @@
 
 package nested
 
+import "reflect"
+
 // MetaStringDiff represents the diff of a MetaString map.
 type MetaStringDiff struct {
 	Add map[string]string
@@ -45,4 +47,3 @@ func ApplyMetaStringDiff(original MetaString, diff MetaStringDiff) MetaString {
 	}
 	return original
 }
-

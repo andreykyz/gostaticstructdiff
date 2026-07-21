@@ -8,9 +8,11 @@ import (
 // ComplexStruct demonstrates a variety of field types and nesting.
 type ComplexStruct struct {
 	// Basic fields
-	Name   string `structtomap:"name"`
-	Count  int    `structtomap:"count"`
-	Active bool   `structtomap:"active"`
+	Name string `structtomap:"name"`
+	// alias for string
+	GGID   nested.GGID `structtomap:"ggid"`
+	Count  int         `structtomap:"count"`
+	Active bool        `structtomap:"active"`
 	// Slice of basic types
 	Tags []string `structtomap:"tags"`
 	// Slice of structs from another package
@@ -21,8 +23,6 @@ type ComplexStruct struct {
 	MetaMeta models.MetaMeta `structtomap:"meta_meta"`
 	// alias of Map of map[string]string (nested)
 	MetaString nested.MetaString `structtomap:"meta_string"`
-	// alias for string
-	GGID nested.GGID `structtomap:"ggid"`
 
 	// Nested struct defined inline
 	Inner struct {

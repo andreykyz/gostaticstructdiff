@@ -3,8 +3,8 @@
 package examples
 
 import (
-	"github.com/andreykyz/gostaticstructdiff/examples/models"
 	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
+	"github.com/andreykyz/gostaticstructdiff/examples/models"
 	"reflect"
 )
 
@@ -12,6 +12,9 @@ import (
 type ComplexStructDiff struct {
 	Name *struct {
 		Value string
+	}
+	GGID *struct {
+		Value nested.GGID
 	}
 	Count *struct {
 		Value int
@@ -35,9 +38,6 @@ type ComplexStructDiff struct {
 	}
 	MetaString *struct {
 		Value nested.MetaStringDiff
-	}
-	GGID *struct {
-		Value nested.GGIDDiff
 	}
 	Inner *struct {
 		Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` }
@@ -64,6 +64,10 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	if original.Name != new.Name {
 		diff.Name = &struct { Value string }{}
 		diff.Name.Value = new.Name
+	}
+	if original.GGID != new.GGID {
+		diff.GGID = &struct { Value nested.GGID }{}
+		diff.GGID.Value = new.GGID
 	}
 	if original.Count != new.Count {
 		diff.Count = &struct { Value int }{}
@@ -121,10 +125,6 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	MetaStringNestedDiff := nested.MetaStringPatch(original.MetaString, new.MetaString)
 	diff.MetaString = &struct { Value nested.MetaStringDiff }{}
 	diff.MetaString.Value = MetaStringNestedDiff
-	// Nested struct diff
-	GGIDNestedDiff := nested.GGIDPatch(original.GGID, new.GGID)
-	diff.GGID = &struct { Value nested.GGIDDiff }{}
-	diff.GGID.Value = GGIDNestedDiff
 	if original.Inner != new.Inner {
 		diff.Inner = &struct { Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` } }{}
 		diff.Inner.Value = new.Inner
@@ -193,6 +193,9 @@ func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) Comp
 	if diff.Name != nil{
 		result.Name = diff.Name.Value
 	}
+	if diff.GGID != nil{
+		result.GGID = diff.GGID.Value
+	}
 	if diff.Count != nil{
 		result.Count = diff.Count.Value
 	}
@@ -231,9 +234,6 @@ func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) Comp
 	}
 	if diff.MetaString != nil{
 		result.MetaString = nested.ApplyMetaStringDiff(original.MetaString, diff.MetaString.Value)
-	}
-	if diff.GGID != nil{
-		result.GGID = nested.ApplyGGIDDiff(original.GGID, diff.GGID.Value)
 	}
 	if diff.Inner != nil{
 		result.Inner = diff.Inner.Value

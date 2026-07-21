@@ -3,10 +3,16 @@ package generator
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"go/ast"
+	"go/token"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/template"
+
+	goparser "go/parser"
 
 	"github.com/andreykyz/gostaticstructdiff/parser"
 	"github.com/andreykyz/gostaticstructdiff/types"
@@ -76,6 +82,17 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 	knownStructs := make(map[string]bool)
 	for _, s := range structs {
 		knownStructs[s.Name] = true
+	}
+
+	// Resolve type definitions from imported packages (wrapped primitives only)
+	if typeDefs == nil {
+		typeDefs = make(map[string]ast.Expr)
+	}
+	importTypeDefs := resolveImportTypeDefs(imports, verbose)
+	for name, underlying := range importTypeDefs {
+		if _, exists := typeDefs[name]; !exists {
+			typeDefs[name] = underlying
+		}
 	}
 
 	// Determine if we need reflect import
@@ -175,6 +192,99 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 	}
 
 	return output.String(), nil
+}
+
+// resolveImportTypeDefs resolves import paths to package directories and parses
+// their Go source files to extract type definitions for wrapped primitives
+// (type aliases to basic types like 'type GGID string').
+// This enables correct classification of cross-package type aliases.
+func resolveImportTypeDefs(imports []string, verbose bool) map[string]ast.Expr {
+	typeDefs := make(map[string]ast.Expr)
+
+	for _, imp := range imports {
+		// Skip standard library imports - they don't have wrapped primitives
+		// that we need to resolve (standard lib types are already known)
+		if !strings.Contains(imp, ".") {
+			continue
+		}
+
+		// Use 'go list' to find the package directory
+		cmd := exec.Command("go", "list", "-find", "-json", imp)
+		output, err := cmd.Output()
+		if err != nil {
+			if verbose {
+				fmt.Printf("  Warning: could not resolve import %q: %v\n", imp, err)
+			}
+			continue
+		}
+
+		// Parse the JSON output to get the Dir and GoFiles fields
+		var pkgInfo struct {
+			Dir     string   `json:"Dir"`
+			GoFiles []string `json:"GoFiles"`
+		}
+		if err := json.Unmarshal(output, &pkgInfo); err != nil {
+			if verbose {
+				fmt.Printf("  Warning: could not parse go list output for %q: %v\n", imp, err)
+			}
+			continue
+		}
+
+		if pkgInfo.Dir == "" {
+			continue
+		}
+
+		// Parse each Go file to find wrapped primitives
+		for _, goFile := range pkgInfo.GoFiles {
+			if strings.HasSuffix(goFile, "_test.go") || strings.HasSuffix(goFile, "_diff.go") {
+				continue
+			}
+			filePath := filepath.Join(pkgInfo.Dir, goFile)
+			fset := token.NewFileSet()
+			node, err := goparser.ParseFile(fset, filePath, nil, goparser.ParseComments)
+			if err != nil {
+				continue
+			}
+
+			// Walk through the AST and collect type definitions
+			ast.Inspect(node, func(n ast.Node) bool {
+				typeSpec, ok := n.(*ast.TypeSpec)
+				if !ok {
+					return true
+				}
+				// Check if the underlying type is a basic type identifier
+				if ident, ok := typeSpec.Type.(*ast.Ident); ok {
+					if isBasicTypeName(ident.Name) {
+						typeDefs[typeSpec.Name.Name] = typeSpec.Type
+						if verbose {
+							fmt.Printf("  Resolved wrapped primitive from import %q: %s -> %s\n", imp, typeSpec.Name.Name, ident.Name)
+						}
+					}
+				}
+				return true
+			})
+		}
+	}
+
+	return typeDefs
+}
+
+// isBasicTypeName returns true if the given name is a Go basic type.
+func isBasicTypeName(name string) bool {
+	basicTypes := []string{
+		"bool", "string",
+		"int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+		"float32", "float64",
+		"complex64", "complex128",
+		"byte", "rune",
+	}
+	for _, t := range basicTypes {
+		if name == t {
+			return true
+		}
+	}
+	return false
 }
 
 // splitType splits a type string like "models.Metadata" into package and name.

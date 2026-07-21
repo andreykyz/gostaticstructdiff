@@ -110,6 +110,17 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 		}
 	}
 
+	// Also check typeDefs for map alias types (standalone types like type MetaString map[string]string)
+	// that are not referenced as struct fields but still use reflect.DeepEqual in generated patch code.
+	if !needsReflect {
+		for _, underlying := range typeDefs {
+			if _, ok := underlying.(*ast.MapType); ok {
+				needsReflect = true
+				break
+			}
+		}
+	}
+
 	// Add reflect import if needed and not already present
 	if needsReflect {
 		hasReflect := false

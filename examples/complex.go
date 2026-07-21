@@ -2,6 +2,7 @@ package examples
 
 import (
 	"github.com/andreykyz/gostaticstructdiff/examples/models"
+	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
 )
 
 // ComplexStruct demonstrates a variety of field types and nesting.
@@ -16,8 +17,10 @@ type ComplexStruct struct {
 	Users []models.User `structtomap:"users"`
 	// Map of string to Metadata struct (nested)
 	Metadata map[string]models.Metadata `structtomap:"metadata"`
-	// Map of struct (nested)
+	// alias of Map of struct (nested)
 	MetaMeta models.MetaMeta `structtomap:"meta_meta"`
+	// alias of Map of map[string]string (nested)
+	MetaString nested.MetaString `structtomap:"meta_string"`
 	// Nested struct defined inline
 	Inner struct {
 		Title string `structtomap:"title"`

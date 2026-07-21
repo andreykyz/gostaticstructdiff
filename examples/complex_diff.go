@@ -3,6 +3,7 @@
 package examples
 
 import (
+	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
 	"github.com/andreykyz/gostaticstructdiff/examples/models"
 	"reflect"
 )
@@ -31,6 +32,9 @@ type ComplexStructDiff struct {
 	}
 	MetaMeta *struct {
 		Value models.MetaMetaDiff
+	}
+	MetaString *struct {
+		Value nested.MetaStringDiff
 	}
 	Inner *struct {
 		Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` }
@@ -110,6 +114,10 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	MetaMetaNestedDiff := models.MetaMetaPatch(original.MetaMeta, new.MetaMeta)
 	diff.MetaMeta = &struct { Value models.MetaMetaDiff }{}
 	diff.MetaMeta.Value = MetaMetaNestedDiff
+	// Nested struct diff
+	MetaStringNestedDiff := nested.MetaStringPatch(original.MetaString, new.MetaString)
+	diff.MetaString = &struct { Value nested.MetaStringDiff }{}
+	diff.MetaString.Value = MetaStringNestedDiff
 	if original.Inner != new.Inner {
 		diff.Inner = &struct { Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` } }{}
 		diff.Inner.Value = new.Inner
@@ -213,6 +221,9 @@ func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) Comp
 	}
 	if diff.MetaMeta != nil{
 		result.MetaMeta = models.ApplyMetaMetaDiff(original.MetaMeta, diff.MetaMeta.Value)
+	}
+	if diff.MetaString != nil{
+		result.MetaString = nested.ApplyMetaStringDiff(original.MetaString, diff.MetaString.Value)
 	}
 	if diff.Inner != nil{
 		result.Inner = diff.Inner.Value

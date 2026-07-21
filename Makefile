@@ -29,6 +29,8 @@ generate_example: build
 	./$(BINARY_NAME) -input $(EXAMPLES_DIR)/complex.go -verbose
 	./$(BINARY_NAME) -input $(MODELS_DIR)/user.go -verbose
 	./$(BINARY_NAME) -input $(MODELS_DIR)/metadata.go -verbose
+	./$(BINARY_NAME) -input $(MODELS_DIR)/nested/id.go -verbose
+
 
 
 # Run tests

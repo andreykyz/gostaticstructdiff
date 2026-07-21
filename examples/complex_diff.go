@@ -3,8 +3,8 @@
 package examples
 
 import (
-	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
 	"github.com/andreykyz/gostaticstructdiff/examples/models"
+	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
 	"reflect"
 )
 

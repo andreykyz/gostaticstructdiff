@@ -13,4 +13,4 @@ type Metadata struct {
 	} `structtomap:"extra"`
 }
 
-type Metadatas map[nested.ID]Metadata
+type MetaMeta map[nested.ID]Metadata

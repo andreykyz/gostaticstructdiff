@@ -14,6 +14,7 @@ const (
 	CategorySlice
 	CategoryMap
 	CategoryStruct
+	CategoryMapAlias
 	CategoryUnknown
 )
 
@@ -30,6 +31,8 @@ func (c Category) String() string {
 		return "map"
 	case CategoryStruct:
 		return "struct"
+	case CategoryMapAlias:
+		return "mapAlias"
 	default:
 		return "unknown"
 	}
@@ -74,7 +77,17 @@ func Classify(expr ast.Expr, knownStructs map[string]bool, typeDefs map[string]a
 		if typeDefs != nil {
 			if underlying, ok := typeDefs[name]; ok {
 				// Recursively classify the underlying type
-				return Classify(underlying, knownStructs, typeDefs)
+				inner := Classify(underlying, knownStructs, typeDefs)
+				// If it's a map alias, return CategoryMapAlias with the type name
+				if inner.Category == CategoryMap {
+					return &TypeInfo{
+						Category:   CategoryMapAlias,
+						TypeString: name,
+						Key:        inner.Key,
+						Value:      inner.Value,
+					}
+				}
+				return inner
 			}
 		}
 		// Assume it's a basic (comparable) type (e.g., type alias)
@@ -116,6 +129,24 @@ func Classify(expr ast.Expr, knownStructs map[string]bool, typeDefs map[string]a
 			return &TypeInfo{
 				Category:   CategoryStruct,
 				TypeString: typeStr,
+			}
+		}
+		// Look up in type definitions using the unqualified name (last segment)
+		if typeDefs != nil {
+			if underlying, ok := typeDefs[t.Sel.Name]; ok {
+				// Recursively classify the underlying type
+				inner := Classify(underlying, knownStructs, typeDefs)
+				// If it's a map alias, return it with the qualified type string
+				if inner.Category == CategoryMap {
+					return &TypeInfo{
+						Category:   CategoryMapAlias,
+						TypeString: typeStr,
+						Key:        inner.Key,
+						Value:      inner.Value,
+					}
+				}
+				// For other type aliases (e.g., type alias to struct), return as-is
+				return inner
 			}
 		}
 		// Assume it's a struct (most likely scenario for imported types)

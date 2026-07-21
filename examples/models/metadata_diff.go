@@ -95,3 +95,61 @@ func ApplyMetadataDiff(original Metadata, diff MetadataDiff) Metadata {
 	return result
 }
 
+// MetaMetaDiff represents the diff of a MetaMeta map.
+type MetaMetaDiff struct {
+	Add    map[nested.ID]Metadata
+	Modify map[nested.ID]MetadataDiff
+	Del    map[nested.ID]struct{}
+}
+
+// MetaMetaPatch computes the diff between original and new MetaMeta.
+func MetaMetaPatch(original, new MetaMeta) MetaMetaDiff {
+	var diff MetaMetaDiff
+	diff.Add = make(map[nested.ID]Metadata)
+	diff.Modify = make(map[nested.ID]MetadataDiff)
+	diff.Del = make(map[nested.ID]struct{})
+	// Added or modified keys
+	for k, v := range new {
+		oldV, ok := original[k]
+		if !ok {
+			// added key
+			diff.Add[k] = v
+		} else if !reflect.DeepEqual(oldV, v) {
+			// modified key, compute diff
+			nestedDiff := MetadataPatch(oldV, v)
+			diff.Modify[k] = nestedDiff
+		}
+	}
+	// Deleted keys
+	for k := range original {
+		if _, ok := new[k]; !ok {
+			diff.Del[k] = struct{}{}
+		}
+	}
+	if len(diff.Add) == 0 && len(diff.Modify) == 0 && len(diff.Del) == 0 {
+		diff = MetaMetaDiff{}
+	}
+	return diff
+}
+
+// ApplyMetaMetaDiff applies a diff to an original MetaMeta.
+func ApplyMetaMetaDiff(original MetaMeta, diff MetaMetaDiff) MetaMeta {
+	if original == nil {
+		original = make(MetaMeta)
+	}
+	for k, v := range diff.Add {
+		original[k] = v
+	}
+	for k, v := range diff.Modify {
+		existing, ok := original[k]
+		if !ok {
+			existing = Metadata{}
+		}
+		original[k] = ApplyMetadataDiff(existing, v)
+	}
+	for k := range diff.Del {
+		delete(original, k)
+	}
+	return original
+}
+

@@ -20,6 +20,8 @@ type {{.Name}}Diff struct {
 		Add map[{{.KeyType}}]{{.ValueType}}
 		Del map[{{.KeyType}}]struct{}
 		{{- end}}
+		{{- else if eq .Category "mapAlias"}}
+		Value {{.Type}}Diff
 		{{- else if eq .Category "struct"}}
 		Value {{.Type}}Diff
 		{{- end}}

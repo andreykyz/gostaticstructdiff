@@ -8,6 +8,8 @@ import (
 	"github.com/andreykyz/gostaticstructdiff/examples"
 )
 
+// test example program
+
 func main() {
 	fmt.Println("=== gostaticstructdiff example: random generation and diff/patch ===")
 	fmt.Println("This example uses debugging.GetTestStruct to generate random ComplexStruct instances")

@@ -105,11 +105,16 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
         diff.{{.Name}} = nil
     }
 	{{- end}}
+	{{- else if eq .Category "mapAlias"}}
+	// Map alias diff
+	{{.Name}}NestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
+	diff.{{.Name}} = &struct { Value {{.Type}}Diff }{}
+	diff.{{.Name}}.Value = {{.Name}}NestedDiff
 	{{- else if eq .Category "struct"}}
 	// Nested struct diff
-	nestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
+	{{.Name}}NestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
 	diff.{{.Name}} = &struct { Value {{.Type}}Diff }{}
-	diff.{{.Name}}.Value = nestedDiff
+	diff.{{.Name}}.Value = {{.Name}}NestedDiff
 	{{- end}}
 {{- end}}
 	return diff
@@ -166,6 +171,8 @@ func Apply{{.Name}}Diff(original {{.Name}}, diff {{.Name}}Diff) {{.Name}} {
 		for k := range diff.{{.Name}}.Del {
 			delete(result.{{.Name}}, k)
 		}
+		{{- else if eq .Category "mapAlias"}}
+		result.{{.Name}} = {{.StructDiffFunc}}(original.{{.Name}}, diff.{{.Name}}.Value)
 		{{- else if eq .Category "struct"}}
 		result.{{.Name}} = {{.StructDiffFunc}}(original.{{.Name}}, diff.{{.Name}}.Value)
 		{{- end}}

@@ -29,6 +29,9 @@ type ComplexStructDiff struct {
 		Modify map[string]models.MetadataDiff
 		Del map[string]struct{}
 	}
+	MetaMeta *struct {
+		Value models.MetaMetaDiff
+	}
 	Inner *struct {
 		Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` }
 	}
@@ -103,14 +106,18 @@ func ComplexStructPatch(original, new ComplexStruct) ComplexStructDiff {
 	if len(diff.Metadata.Add) == 0 && len(diff.Metadata.Modify) == 0 && len(diff.Metadata.Del) == 0 {
         diff.Metadata = nil
     }
+	// Nested struct diff
+	MetaMetaNestedDiff := models.MetaMetaPatch(original.MetaMeta, new.MetaMeta)
+	diff.MetaMeta = &struct { Value models.MetaMetaDiff }{}
+	diff.MetaMeta.Value = MetaMetaNestedDiff
 	if original.Inner != new.Inner {
 		diff.Inner = &struct { Value struct { Title string `structtomap:"title"`; Value int `structtomap:"value"` } }{}
 		diff.Inner.Value = new.Inner
 	}
 	// Nested struct diff
-	nestedDiff := models.UserPatch(original.StaticUser, new.StaticUser)
+	StaticUserNestedDiff := models.UserPatch(original.StaticUser, new.StaticUser)
 	diff.StaticUser = &struct { Value models.UserDiff }{}
-	diff.StaticUser.Value = nestedDiff
+	diff.StaticUser.Value = StaticUserNestedDiff
 	// Pointer-to-struct diff
 	if original.Ref == nil && new.Ref == nil {
 		// both nil, no change
@@ -203,6 +210,9 @@ func ApplyComplexStructDiff(original ComplexStruct, diff ComplexStructDiff) Comp
 		for k := range diff.Metadata.Del {
 			delete(result.Metadata, k)
 		}
+	}
+	if diff.MetaMeta != nil{
+		result.MetaMeta = models.ApplyMetaMetaDiff(original.MetaMeta, diff.MetaMeta.Value)
 	}
 	if diff.Inner != nil{
 		result.Inner = diff.Inner.Value

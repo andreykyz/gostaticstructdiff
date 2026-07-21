@@ -16,6 +16,8 @@ type ComplexStruct struct {
 	Users []models.User `structtomap:"users"`
 	// Map of string to Metadata struct (nested)
 	Metadata map[string]models.Metadata `structtomap:"metadata"`
+	// Map of struct (nested)
+	MetaMeta models.MetaMeta `structtomap:"meta_meta"`
 	// Nested struct defined inline
 	Inner struct {
 		Title string `structtomap:"title"`

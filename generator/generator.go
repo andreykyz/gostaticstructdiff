@@ -48,6 +48,18 @@ type StructTemplateData struct {
 	Fields []FieldTemplateData
 }
 
+// MapAliasTemplateData holds data for a map alias type in the template.
+type MapAliasTemplateData struct {
+	Name             string
+	KeyType          string
+	ValueType        string
+	ValueIsStruct    bool
+	ValueDiffType    string
+	ValueTypePackage string
+	ValueTypeName    string
+	ValueDiffFunc    string
+}
+
 // Generate generates diff code for the given structs and writes to output.
 func Generate(structs []parser.StructInfo, packageName string, imports []string, version string, typeDefs map[string]ast.Expr, verbose bool) (string, error) {
 	if verbose {
@@ -71,7 +83,7 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 	for _, s := range structs {
 		for _, f := range s.Fields {
 			typeInfo := types.Classify(f.TypeExpr, knownStructs, typeDefs)
-			if typeInfo.Category == types.CategorySlice || typeInfo.Category == types.CategoryMap || typeInfo.Category == types.CategoryUnknown {
+			if typeInfo.Category == types.CategorySlice || typeInfo.Category == types.CategoryMap || typeInfo.Category == types.CategoryMapAlias || typeInfo.Category == types.CategoryUnknown {
 				needsReflect = true
 				break
 			}
@@ -134,8 +146,32 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 		output.WriteString("\n\n")
 	}
 
+	// Collect and generate diff types for referenced map aliases
+	mapAliases := collectReferencedMapAliases(structs, typeDefs, knownStructs)
+	generatedMapAliases := make(map[string]bool)
+	for _, ma := range mapAliases {
+		if generatedMapAliases[ma.Name] {
+			continue
+		}
+		generatedMapAliases[ma.Name] = true
+		if verbose {
+			fmt.Printf("  Generating diff for map alias %s\n", ma.Name)
+		}
+		err = tmpl.ExecuteTemplate(&output, "map_alias_diff.go.tmpl", ma)
+		if err != nil {
+			return "", fmt.Errorf("failed to execute map alias template for %s: %w", ma.Name, err)
+		}
+		output.WriteString("\n\n")
+
+		err = tmpl.ExecuteTemplate(&output, "map_alias_patch.go.tmpl", ma)
+		if err != nil {
+			return "", fmt.Errorf("failed to execute map alias patch template for %s: %w", ma.Name, err)
+		}
+		output.WriteString("\n\n")
+	}
+
 	if verbose {
-		fmt.Printf("Generation completed for %d struct(s)\n", len(structs))
+		fmt.Printf("Generation completed for %d struct(s) and %d map alias(es)\n", len(structs), len(mapAliases))
 	}
 
 	return output.String(), nil
@@ -189,7 +225,7 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 		}
 
 		// For map types, extract key and value types
-		if typeInfo.Category == types.CategoryMap && typeInfo.Key != nil && typeInfo.Value != nil {
+		if (typeInfo.Category == types.CategoryMap || typeInfo.Category == types.CategoryMapAlias) && typeInfo.Key != nil && typeInfo.Value != nil {
 			fieldData.KeyType = typeInfo.Key.TypeString
 			fieldData.ValueType = typeInfo.Value.TypeString
 			if typeInfo.Value.Category == types.CategoryStruct {
@@ -238,8 +274,8 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 			}
 		}
 
-		// For struct types, compute diff function
-		if typeInfo.Category == types.CategoryStruct && !isAnonymous {
+		// For struct types and map alias types, compute diff function
+		if (typeInfo.Category == types.CategoryStruct || typeInfo.Category == types.CategoryMapAlias) && !isAnonymous {
 			pkg, name := splitType(typeInfo.TypeString)
 			fieldData.StructTypePackage = pkg
 			fieldData.StructTypeName = name
@@ -254,6 +290,88 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 	}
 
 	return data
+}
+
+// collectReferencedMapAliases scans struct fields and typeDefs for map alias types
+// and returns template data for generating their diff types.
+func collectReferencedMapAliases(structs []parser.StructInfo, typeDefs map[string]ast.Expr, knownStructs map[string]bool) []MapAliasTemplateData {
+	seen := make(map[string]bool)
+	var result []MapAliasTemplateData
+
+	// First, scan struct fields for map alias references
+	for _, s := range structs {
+		for _, f := range s.Fields {
+			typeInfo := types.Classify(f.TypeExpr, knownStructs, typeDefs)
+			if typeInfo.Category != types.CategoryMapAlias {
+				continue
+			}
+			if seen[typeInfo.TypeString] {
+				continue
+			}
+			seen[typeInfo.TypeString] = true
+
+			ma := MapAliasTemplateData{
+				Name:      typeInfo.TypeString,
+				KeyType:   typeInfo.Key.TypeString,
+				ValueType: typeInfo.Value.TypeString,
+			}
+
+			if typeInfo.Value.Category == types.CategoryStruct {
+				ma.ValueIsStruct = true
+				ma.ValueDiffType = typeInfo.Value.TypeString + "Diff"
+				pkg, name := splitType(typeInfo.Value.TypeString)
+				ma.ValueTypePackage = pkg
+				ma.ValueTypeName = name
+				if pkg != "" {
+					ma.ValueDiffFunc = pkg + ".Apply" + name + "Diff"
+				} else {
+					ma.ValueDiffFunc = "Apply" + name + "Diff"
+				}
+			}
+
+			result = append(result, ma)
+		}
+	}
+
+	// Also scan typeDefs directly for map alias types that aren't referenced by fields
+	// but are defined in the same package (e.g., type MetaMeta map[nested.ID]Metadata)
+	for name, underlying := range typeDefs {
+		if seen[name] {
+			continue
+		}
+		// Check if the underlying type is a map
+		mapType, ok := underlying.(*ast.MapType)
+		if !ok {
+			continue
+		}
+		// Classify the key and value types
+		keyInfo := types.Classify(mapType.Key, knownStructs, typeDefs)
+		valueInfo := types.Classify(mapType.Value, knownStructs, typeDefs)
+
+		ma := MapAliasTemplateData{
+			Name:      name,
+			KeyType:   keyInfo.TypeString,
+			ValueType: valueInfo.TypeString,
+		}
+
+		if valueInfo.Category == types.CategoryStruct {
+			ma.ValueIsStruct = true
+			ma.ValueDiffType = valueInfo.TypeString + "Diff"
+			pkg, name := splitType(valueInfo.TypeString)
+			ma.ValueTypePackage = pkg
+			ma.ValueTypeName = name
+			if pkg != "" {
+				ma.ValueDiffFunc = pkg + ".Apply" + name + "Diff"
+			} else {
+				ma.ValueDiffFunc = "Apply" + name + "Diff"
+			}
+		}
+
+		seen[name] = true
+		result = append(result, ma)
+	}
+
+	return result
 }
 
 // loadTemplates loads all template files from the embedded filesystem.

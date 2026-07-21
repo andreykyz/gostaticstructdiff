@@ -21,6 +21,9 @@ type ComplexStruct struct {
 	MetaMeta models.MetaMeta `structtomap:"meta_meta"`
 	// alias of Map of map[string]string (nested)
 	MetaString nested.MetaString `structtomap:"meta_string"`
+	// alias for string
+	GGID nested.GGID `structtomap:"ggid"`
+
 	// Nested struct defined inline
 	Inner struct {
 		Title string `structtomap:"title"`

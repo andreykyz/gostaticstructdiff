@@ -29,3 +29,9 @@ type {{.Name}}Diff struct {
 {{- end}}
 }
 
+// IsEmpty returns true if no fields have been changed.
+func (d {{.Name}}Diff) IsEmpty() bool {
+	return {{range $i, $f := .Fields}}{{if $i}} &&
+		{{end}}d.{{.Name}} == nil{{- end}}
+}
+

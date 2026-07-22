@@ -24,6 +24,14 @@ type MetadataDiff struct {
 	}
 }
 
+// IsEmpty returns true if no fields have been changed.
+func (d MetadataDiff) IsEmpty() bool {
+	return d.Label == nil &&
+		d.Values == nil &&
+		d.Score == nil &&
+		d.Extra == nil
+}
+
 
 
 
@@ -100,6 +108,11 @@ type MetaMetaDiff struct {
 	Add    map[nested.ID]Metadata
 	Modify map[nested.ID]MetadataDiff
 	Del    map[nested.ID]struct{}
+}
+
+// IsEmpty returns true if no changes have been made.
+func (d MetaMetaDiff) IsEmpty() bool {
+	return len(d.Add) == 0 && len(d.Modify) == 0 && len(d.Del) == 0
 }
 
 // MetaMetaPatch computes the diff between original and new MetaMeta.

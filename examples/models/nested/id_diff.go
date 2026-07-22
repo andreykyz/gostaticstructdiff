@@ -12,6 +12,11 @@ type MetaStringDiff struct {
 	Del map[string]struct{}
 }
 
+// IsEmpty returns true if no changes have been made.
+func (d MetaStringDiff) IsEmpty() bool {
+	return len(d.Add) == 0 && len(d.Del) == 0
+}
+
 // MetaStringPatch computes the diff between original and new MetaString.
 func MetaStringPatch(original, new MetaString) MetaStringDiff {
 	var diff MetaStringDiff

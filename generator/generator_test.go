@@ -47,6 +47,12 @@ func TestGenerate_SimpleStruct(t *testing.T) {
 	if !strings.Contains(code, "func UserPatch") {
 		t.Error("generated code missing UserPatch function")
 	}
+	if !strings.Contains(code, "func (d UserDiff) IsEmpty() bool") {
+		t.Error("generated code missing UserDiff.IsEmpty method")
+	}
+	if !strings.Contains(code, "d.ID == nil &&\n\t\td.Name == nil") {
+		t.Error("generated code missing IsEmpty body with field nil checks")
+	}
 }
 
 func TestGenerate_EmptyStructs(t *testing.T) {

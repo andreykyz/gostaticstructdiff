@@ -18,6 +18,14 @@ type UserDiff struct {
 	}
 }
 
+// IsEmpty returns true if no fields have been changed.
+func (d UserDiff) IsEmpty() bool {
+	return d.ID == nil &&
+		d.Username == nil &&
+		d.Email == nil &&
+		d.Active == nil
+}
+
 
 
 

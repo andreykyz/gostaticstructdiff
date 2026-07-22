@@ -9,3 +9,12 @@ type {{.Name}}Diff struct {
 	Del map[{{.KeyType}}]struct{}
 	{{- end}}
 }
+
+// IsEmpty returns true if no changes have been made.
+func (d {{.Name}}Diff) IsEmpty() bool {
+	{{- if .ValueIsStruct}}
+	return len(d.Add) == 0 && len(d.Modify) == 0 && len(d.Del) == 0
+	{{- else}}
+	return len(d.Add) == 0 && len(d.Del) == 0
+	{{- end}}
+}

@@ -3,8 +3,8 @@
 package examples
 
 import (
-	"github.com/andreykyz/gostaticstructdiff/examples/models"
 	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
+	"github.com/andreykyz/gostaticstructdiff/examples/models"
 	"reflect"
 )
 
@@ -58,6 +58,24 @@ type ComplexStructDiff struct {
 		Add map[string][]string
 		Del map[string]struct{}
 	}
+}
+
+// IsEmpty returns true if no fields have been changed.
+func (d ComplexStructDiff) IsEmpty() bool {
+	return d.Name == nil &&
+		d.GGID == nil &&
+		d.Count == nil &&
+		d.Active == nil &&
+		d.Tags == nil &&
+		d.Users == nil &&
+		d.Metadata == nil &&
+		d.NestedMapArray == nil &&
+		d.MetaMeta == nil &&
+		d.MetaString == nil &&
+		d.Inner == nil &&
+		d.StaticUser == nil &&
+		d.Ref == nil &&
+		d.Categories == nil
 }
 
 
@@ -332,6 +350,11 @@ type NestedArrayDiff struct {
 	NestedStringArray *struct {
 		Value []string
 	}
+}
+
+// IsEmpty returns true if no fields have been changed.
+func (d NestedArrayDiff) IsEmpty() bool {
+	return d.NestedStringArray == nil
 }
 
 

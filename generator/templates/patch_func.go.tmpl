@@ -1,7 +1,7 @@
 
-// {{.Name}}Patch computes the diff between original and new {{.Name}}.
-func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
-	var diff {{.Name}}Diff
+// {{.Name}}Patch{{.Suffix}} computes the diff between original and new {{.Name}}.
+func {{.Name}}Patch{{.Suffix}}(original, new {{.Name}}) {{.Name}}Diff{{.Suffix}} {
+	var diff {{.Name}}Diff{{.Suffix}}
 {{- range .Fields}}
 	{{- if eq .Category "basic"}}
 	if original.{{.Name}} != new.{{.Name}} {
@@ -34,7 +34,7 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 	} else {
 		// both non-nil, compare content
 		if !reflect.DeepEqual(*original.{{.Name}}, *new.{{.Name}}) {
-			nestedDiff := {{.PointerElementType}}Patch(*original.{{.Name}}, *new.{{.Name}})
+			nestedDiff := {{.PointerElementType}}Patch{{$.Suffix}}(*original.{{.Name}}, *new.{{.Name}})
 			diff.{{.Name}} = &struct {
 				NewValue {{.Type}}
 				Diff     *{{.PointerDiffType}}
@@ -67,7 +67,7 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 			diff.{{.Name}}.Add[k] = v
 		} else if !reflect.DeepEqual(oldV, v) {
 			// modified key, compute diff
-			nestedDiff := {{.ValueType}}Patch(oldV, v)
+			nestedDiff := {{.ValueType}}Patch{{$.Suffix}}(oldV, v)
 			diff.{{.Name}}.Modify[k] = nestedDiff
 		}
 	}
@@ -107,21 +107,21 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 	{{- end}}
 	{{- else if eq .Category "mapAlias"}}
 	// Map alias diff
-	{{.Name}}NestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
-	diff.{{.Name}} = &struct { Value {{.Type}}Diff }{}
+	{{.Name}}NestedDiff := {{.Type}}Patch{{$.Suffix}}(original.{{.Name}}, new.{{.Name}})
+	diff.{{.Name}} = &struct { Value {{.Type}}Diff{{$.Suffix}} }{}
 	diff.{{.Name}}.Value = {{.Name}}NestedDiff
 	{{- else if eq .Category "struct"}}
 	// Nested struct diff
-	{{.Name}}NestedDiff := {{.Type}}Patch(original.{{.Name}}, new.{{.Name}})
-	diff.{{.Name}} = &struct { Value {{.Type}}Diff }{}
+	{{.Name}}NestedDiff := {{.Type}}Patch{{$.Suffix}}(original.{{.Name}}, new.{{.Name}})
+	diff.{{.Name}} = &struct { Value {{.Type}}Diff{{$.Suffix}} }{}
 	diff.{{.Name}}.Value = {{.Name}}NestedDiff
 	{{- end}}
 {{- end}}
 	return diff
 }
 
-// Apply{{.Name}}Diff applies a diff to an original {{.Name}}.
-func Apply{{.Name}}Diff(original {{.Name}}, diff {{.Name}}Diff) {{.Name}} {
+// Apply{{.Name}}Diff{{.Suffix}} applies a diff to an original {{.Name}}.
+func Apply{{.Name}}Diff{{.Suffix}}(original {{.Name}}, diff {{.Name}}Diff{{.Suffix}}) {{.Name}} {
 	result := original
 {{- range .Fields}}
 	if diff.{{.Name}} != nil{

@@ -120,6 +120,30 @@ func TestClassify_SelectorExpr(t *testing.T) {
 	}
 }
 
+func TestClassify_TimeTime(t *testing.T) {
+	expr := parseExpr(t, "time.Time")
+	info := Classify(expr, nil, nil)
+	if info.Category != CategoryBasic {
+		t.Errorf("Category = %v, want CategoryBasic", info.Category)
+	}
+	if info.TypeString != "time.Time" {
+		t.Errorf("TypeString = %q, want time.Time", info.TypeString)
+	}
+}
+
+func TestClassify_UnknownExternalTypeFallsBackToStruct(t *testing.T) {
+	// An unresolved qualified identifier that is not a known std-lib type
+	// should retain the existing "assume struct" fallback.
+	expr := parseExpr(t, "pkg.UnknownThing")
+	info := Classify(expr, nil, nil)
+	if info.Category != CategoryStruct {
+		t.Errorf("Category = %v, want CategoryStruct", info.Category)
+	}
+	if info.TypeString != "pkg.UnknownThing" {
+		t.Errorf("TypeString = %q, want pkg.UnknownThing", info.TypeString)
+	}
+}
+
 func TestDetermineDiffStrategy(t *testing.T) {
 	tests := []struct {
 		expr     string

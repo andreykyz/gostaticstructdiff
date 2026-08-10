@@ -1,3 +1,6 @@
 gostaticstructdiff
 vendor
 examples/cmd/gen/gen
+
+# Generated suffix example artifacts (not part of source)
+*_diff_my_suffix_gg.go

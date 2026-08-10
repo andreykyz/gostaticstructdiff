@@ -80,6 +80,7 @@ gostaticstructdiff -input <file.go> -output <output.go> [options]
 | `-struct` | Specific struct to generate (generates all if empty) | all |
 | `-tag` | Tag key to look for | `structtomap` |
 | `-all` | Include all fields regardless of tags | `false` |
+| `-suffix` | Suffix appended to generated type/function names (CamelCase) and output filename | — |
 | `-verbose` | Enable verbose logging | `false` |
 | `-version` | Show version | `false` |
 
@@ -94,6 +95,11 @@ gostaticstructdiff -input models.go -struct User -tag "diff"
 
 # Include all fields (ignore tag filtering)
 gostaticstructdiff -input models.go -all
+
+# Append a suffix to generated type/function names and the output filename
+# (e.g. generates "complex_diff_my_suffix.go" with "ComplexStructDiffMySuffix",
+#  "ComplexStructPatchMySuffix", and "ApplyComplexStructDiffMySuffix")
+gostaticstructdiff -input complex.go -suffix my_suffix
 
 # Process multiple files (must belong to the same package)
 gostaticstructdiff -input "user.go,metadata.go" -output combined_diff.go

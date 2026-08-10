@@ -1,6 +1,8 @@
 package examples
 
 import (
+	"time"
+
 	"github.com/andreykyz/gostaticstructdiff/examples/models"
 	"github.com/andreykyz/gostaticstructdiff/examples/models/nested"
 )
@@ -36,6 +38,7 @@ type ComplexStruct struct {
 	Ref *models.User `structtomap:"ref"`
 	// Map of string to slice of strings
 	Categories map[string][]string `structtomap:"categories"`
+	TS         time.Time           `structtomap:"ts"`
 }
 
 type NestedArray struct {

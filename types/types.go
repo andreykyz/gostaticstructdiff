@@ -158,6 +158,15 @@ func Classify(expr ast.Expr, knownStructs map[string]bool, typeDefs map[string]a
 				return inner
 			}
 		}
+		// Standard-library value types that are safe to compare with == / !=
+		// and can be stored directly. The tool cannot generate diff code for
+		// external packages, so treat these as basic comparable types.
+		if isStdLibComparableType(typeStr) {
+			return &TypeInfo{
+				Category:   CategoryBasic,
+				TypeString: typeStr,
+			}
+		}
 		// Assume it's a struct (most likely scenario for imported types)
 		// This enables nested struct recursion for cross-package structs.
 		return &TypeInfo{
@@ -177,6 +186,18 @@ func Classify(expr ast.Expr, knownStructs map[string]bool, typeDefs map[string]a
 			TypeString: exprToString(expr),
 		}
 	}
+}
+
+// isStdLibComparableType returns true for standard-library value types that
+// are safe to compare with == / != and store directly (no generated diff needed).
+// The tool cannot generate diff code for external packages, so these are treated
+// as basic comparable types.
+func isStdLibComparableType(typeStr string) bool {
+	switch typeStr {
+	case "time.Time", "time.Duration":
+		return true
+	}
+	return false
 }
 
 // isBasicType returns true if the given name is a Go basic type.

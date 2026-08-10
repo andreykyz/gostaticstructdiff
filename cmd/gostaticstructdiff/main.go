@@ -11,7 +11,7 @@ import (
 	"github.com/andreykyz/gostaticstructdiff/parser"
 )
 
-const version = "0.1.6"
+const version = "0.1.8"
 
 func main() {
 	// Define command-line flags
@@ -20,6 +20,7 @@ func main() {
 	structName := flag.String("struct", "", "Specific struct to generate (default: all)")
 	tagKey := flag.String("tag", "structtomap", "Tag key to look for (default: structtomap)")
 	includeAll := flag.Bool("all", false, "Include all fields regardless of tags")
+	suffix := flag.String("suffix", "", "Suffix to append to generated type/function names and output filename")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	showVersion := flag.Bool("version", false, "Show version")
 	flag.Usage = func() {
@@ -32,6 +33,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go,models/order.go -output combined_diff.go\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go -output user_diff.go -struct User\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go -tag mapstructure -all\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -input models/user.go -suffix my_suffix\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -input models/user.go -verbose\n", os.Args[0])
 	}
 
@@ -58,7 +60,7 @@ func main() {
 
 	// Set default output filename if not provided
 	if *outputFile == "" {
-		*outputFile = generateOutputFilename(files[0])
+		*outputFile = generateOutputFilename(files[0], *suffix)
 	}
 
 	if *verbose {
@@ -71,10 +73,13 @@ func main() {
 		if *includeAll {
 			fmt.Printf("Include all fields: true\n")
 		}
+		if *suffix != "" {
+			fmt.Printf("Suffix: %s\n", *suffix)
+		}
 	}
 
 	// Process the files
-	if err := processFiles(files, *outputFile, *structName, *tagKey, *includeAll, *verbose); err != nil {
+	if err := processFiles(files, *outputFile, *structName, *tagKey, *includeAll, *suffix, *verbose); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -85,7 +90,7 @@ func main() {
 }
 
 // processFiles reads multiple input files, parses structs, generates diff code, and writes to output.
-func processFiles(inputFiles []string, outputFile, structName, tagKey string, includeAll, verbose bool) error {
+func processFiles(inputFiles []string, outputFile, structName, tagKey string, includeAll bool, suffix string, verbose bool) error {
 	var allStructs []parser.StructInfo
 	allImports := make(map[string]bool)
 	allTypeDefs := make(map[string]ast.Expr)
@@ -167,7 +172,7 @@ func processFiles(inputFiles []string, outputFile, structName, tagKey string, in
 	}
 
 	// Generate code (imports are passed from the parsed file)
-	code, err := generator.Generate(allStructs, packageName, importsSlice, version, allTypeDefs, verbose)
+	code, err := generator.Generate(allStructs, packageName, importsSlice, version, allTypeDefs, verbose, suffix)
 	if err != nil {
 		return fmt.Errorf("failed to generate code: %w", err)
 	}
@@ -182,13 +187,18 @@ func processFiles(inputFiles []string, outputFile, structName, tagKey string, in
 
 // generateOutputFilename generates a default output filename based on input.
 // Example: "models/user.go" -> "models/user_diff.go"
-func generateOutputFilename(input string) string {
-	// Simple implementation: insert "_diff" before ".go"
-	// Could be more sophisticated with path handling
-	if len(input) > 3 && input[len(input)-3:] == ".go" {
-		return input[:len(input)-3] + "_diff.go"
+// When a suffix is provided, it is appended before the ".go" extension using the
+// raw (underscore) suffix, e.g. "models/user.go" with suffix "my_suffix" ->
+// "models/user_diff_my_suffix.go".
+func generateOutputFilename(input, suffix string) string {
+	base := input
+	if len(base) > 3 && base[len(base)-3:] == ".go" {
+		base = base[:len(base)-3]
 	}
-	return input + "_diff.go"
+	if suffix != "" {
+		return base + "_diff_" + suffix + ".go"
+	}
+	return base + "_diff.go"
 }
 
 // extractPackageName reads the package name from a Go file.

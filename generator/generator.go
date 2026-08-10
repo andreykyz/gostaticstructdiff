@@ -51,12 +51,14 @@ type FieldTemplateData struct {
 // StructTemplateData holds data for a struct in the template.
 type StructTemplateData struct {
 	Name   string
+	Suffix string // CamelCase suffix appended to generated identifiers (Diff/Patch/Apply)
 	Fields []FieldTemplateData
 }
 
 // MapAliasTemplateData holds data for a map alias type in the template.
 type MapAliasTemplateData struct {
 	Name             string
+	Suffix           string // CamelCase suffix appended to generated identifiers
 	KeyType          string
 	ValueType        string
 	ValueIsStruct    bool
@@ -66,8 +68,31 @@ type MapAliasTemplateData struct {
 	ValueDiffFunc    string
 }
 
+// toCamelCase converts a suffix like "my_suffix" or "my-suffix" into CamelCase
+// ("MySuffix"). Each underscore or dash separated part is capitalized and joined.
+// An empty input returns an empty string.
+func toCamelCase(suffix string) string {
+	if suffix == "" {
+		return ""
+	}
+	parts := strings.FieldsFunc(suffix, func(r rune) bool {
+		return r == '_' || r == '-'
+	})
+	var b strings.Builder
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+		b.WriteString(strings.ToUpper(p[:1]))
+		if len(p) > 1 {
+			b.WriteString(p[1:])
+		}
+	}
+	return b.String()
+}
+
 // Generate generates diff code for the given structs and writes to output.
-func Generate(structs []parser.StructInfo, packageName string, imports []string, version string, typeDefs map[string]ast.Expr, verbose bool) (string, error) {
+func Generate(structs []parser.StructInfo, packageName string, imports []string, version string, typeDefs map[string]ast.Expr, verbose bool, suffix string) (string, error) {
 	if verbose {
 		fmt.Printf("Generating code for %d struct(s) in package %s\n", len(structs), packageName)
 	}
@@ -154,12 +179,15 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 		output.WriteString(")\n\n")
 	}
 
+	// Compute CamelCase suffix once for generated identifiers
+	camelSuffix := toCamelCase(suffix)
+
 	// Generate each struct diff
 	for _, s := range structs {
 		if verbose {
 			fmt.Printf("  Generating diff for struct %s (%d fields)\n", s.Name, len(s.Fields))
 		}
-		data := convertToTemplateData(s, knownStructs, typeDefs)
+		data := convertToTemplateData(s, knownStructs, typeDefs, camelSuffix)
 		err = tmpl.ExecuteTemplate(&output, "struct_diff.go.tmpl", data)
 		if err != nil {
 			return "", fmt.Errorf("failed to execute struct template for %s: %w", s.Name, err)
@@ -175,7 +203,7 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 	}
 
 	// Collect and generate diff types for referenced map aliases
-	mapAliases := collectReferencedMapAliases(structs, typeDefs, knownStructs)
+	mapAliases := collectReferencedMapAliases(structs, typeDefs, knownStructs, camelSuffix)
 	generatedMapAliases := make(map[string]bool)
 	for _, ma := range mapAliases {
 		if generatedMapAliases[ma.Name] {
@@ -310,9 +338,11 @@ func splitType(typeStr string) (pkg, name string) {
 // convertToTemplateData converts a parser.StructInfo to StructTemplateData.
 // knownStructs is a set of type names that are known to be structs.
 // typeDefs is a map of type names to their underlying AST expressions.
-func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, typeDefs map[string]ast.Expr) StructTemplateData {
+// suffix is the CamelCase suffix appended to generated identifiers.
+func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, typeDefs map[string]ast.Expr, suffix string) StructTemplateData {
 	data := StructTemplateData{
 		Name:   s.Name,
+		Suffix: suffix,
 		Fields: make([]FieldTemplateData, 0, len(s.Fields)),
 	}
 
@@ -351,15 +381,15 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 			fieldData.ValueType = typeInfo.Value.TypeString
 			if typeInfo.Value.Category == types.CategoryStruct {
 				fieldData.ValueIsStruct = true
-				fieldData.ValueDiffType = typeInfo.Value.TypeString + "Diff"
+				fieldData.ValueDiffType = typeInfo.Value.TypeString + "Diff" + suffix
 				// Compute package and name for apply function
 				pkg, name := splitType(typeInfo.Value.TypeString)
 				fieldData.ValueTypePackage = pkg
 				fieldData.ValueTypeName = name
 				if pkg != "" {
-					fieldData.ValueDiffFunc = pkg + ".Apply" + name + "Diff"
+					fieldData.ValueDiffFunc = pkg + ".Apply" + name + "Diff" + suffix
 				} else {
-					fieldData.ValueDiffFunc = "Apply" + name + "Diff"
+					fieldData.ValueDiffFunc = "Apply" + name + "Diff" + suffix
 				}
 			}
 		}
@@ -368,15 +398,15 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 		if typeInfo.Category == types.CategorySlice && typeInfo.Element != nil {
 			if typeInfo.Element.Category == types.CategoryStruct {
 				fieldData.ElementIsStruct = true
-				fieldData.ElementDiffType = typeInfo.Element.TypeString + "Diff"
+				fieldData.ElementDiffType = typeInfo.Element.TypeString + "Diff" + suffix
 				// Compute package and name for apply function
 				pkg, name := splitType(typeInfo.Element.TypeString)
 				fieldData.ElementTypePackage = pkg
 				fieldData.ElementTypeName = name
 				if pkg != "" {
-					fieldData.ElementDiffFunc = pkg + ".Apply" + name + "Diff"
+					fieldData.ElementDiffFunc = pkg + ".Apply" + name + "Diff" + suffix
 				} else {
-					fieldData.ElementDiffFunc = "Apply" + name + "Diff"
+					fieldData.ElementDiffFunc = "Apply" + name + "Diff" + suffix
 				}
 			}
 		}
@@ -385,13 +415,13 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 		if typeInfo.Category == types.CategoryPointer && typeInfo.Element != nil && typeInfo.Element.Category == types.CategoryStruct {
 			fieldData.PointerElementIsStruct = true
 			fieldData.PointerElementType = typeInfo.Element.TypeString
-			fieldData.PointerDiffType = typeInfo.Element.TypeString + "Diff"
+			fieldData.PointerDiffType = typeInfo.Element.TypeString + "Diff" + suffix
 			// Compute package and name for apply function
 			pkg, name := splitType(typeInfo.Element.TypeString)
 			if pkg != "" {
-				fieldData.PointerDiffFunc = pkg + ".Apply" + name + "Diff"
+				fieldData.PointerDiffFunc = pkg + ".Apply" + name + "Diff" + suffix
 			} else {
-				fieldData.PointerDiffFunc = "Apply" + name + "Diff"
+				fieldData.PointerDiffFunc = "Apply" + name + "Diff" + suffix
 			}
 		}
 
@@ -401,9 +431,9 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 			fieldData.StructTypePackage = pkg
 			fieldData.StructTypeName = name
 			if pkg != "" {
-				fieldData.StructDiffFunc = pkg + ".Apply" + name + "Diff"
+				fieldData.StructDiffFunc = pkg + ".Apply" + name + "Diff" + suffix
 			} else {
-				fieldData.StructDiffFunc = "Apply" + name + "Diff"
+				fieldData.StructDiffFunc = "Apply" + name + "Diff" + suffix
 			}
 		}
 
@@ -415,7 +445,8 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 
 // collectReferencedMapAliases scans struct fields and typeDefs for map alias types
 // and returns template data for generating their diff types.
-func collectReferencedMapAliases(structs []parser.StructInfo, typeDefs map[string]ast.Expr, knownStructs map[string]bool) []MapAliasTemplateData {
+// suffix is the CamelCase suffix appended to generated identifiers.
+func collectReferencedMapAliases(structs []parser.StructInfo, typeDefs map[string]ast.Expr, knownStructs map[string]bool, suffix string) []MapAliasTemplateData {
 	seen := make(map[string]bool)
 	var result []MapAliasTemplateData
 
@@ -433,20 +464,21 @@ func collectReferencedMapAliases(structs []parser.StructInfo, typeDefs map[strin
 
 			ma := MapAliasTemplateData{
 				Name:      typeInfo.TypeString,
+				Suffix:    suffix,
 				KeyType:   typeInfo.Key.TypeString,
 				ValueType: typeInfo.Value.TypeString,
 			}
 
 			if typeInfo.Value.Category == types.CategoryStruct {
 				ma.ValueIsStruct = true
-				ma.ValueDiffType = typeInfo.Value.TypeString + "Diff"
+				ma.ValueDiffType = typeInfo.Value.TypeString + "Diff" + suffix
 				pkg, name := splitType(typeInfo.Value.TypeString)
 				ma.ValueTypePackage = pkg
 				ma.ValueTypeName = name
 				if pkg != "" {
-					ma.ValueDiffFunc = pkg + ".Apply" + name + "Diff"
+					ma.ValueDiffFunc = pkg + ".Apply" + name + "Diff" + suffix
 				} else {
-					ma.ValueDiffFunc = "Apply" + name + "Diff"
+					ma.ValueDiffFunc = "Apply" + name + "Diff" + suffix
 				}
 			}
 
@@ -471,20 +503,21 @@ func collectReferencedMapAliases(structs []parser.StructInfo, typeDefs map[strin
 
 		ma := MapAliasTemplateData{
 			Name:      name,
+			Suffix:    suffix,
 			KeyType:   keyInfo.TypeString,
 			ValueType: valueInfo.TypeString,
 		}
 
 		if valueInfo.Category == types.CategoryStruct {
 			ma.ValueIsStruct = true
-			ma.ValueDiffType = valueInfo.TypeString + "Diff"
+			ma.ValueDiffType = valueInfo.TypeString + "Diff" + suffix
 			pkg, name := splitType(valueInfo.TypeString)
 			ma.ValueTypePackage = pkg
 			ma.ValueTypeName = name
 			if pkg != "" {
-				ma.ValueDiffFunc = pkg + ".Apply" + name + "Diff"
+				ma.ValueDiffFunc = pkg + ".Apply" + name + "Diff" + suffix
 			} else {
-				ma.ValueDiffFunc = "Apply" + name + "Diff"
+				ma.ValueDiffFunc = "Apply" + name + "Diff" + suffix
 			}
 		}
 

@@ -1,5 +1,5 @@
-// {{.Name}}Diff represents the diff of a {{.Name}} struct.
-type {{.Name}}Diff struct {
+// {{.Name}}Diff{{.Suffix}} represents the diff of a {{.Name}} struct.
+type {{.Name}}Diff{{.Suffix}} struct {
 {{- range .Fields}}
 	{{.Name}} *struct {
 		{{- if eq .Category "basic"}}
@@ -21,16 +21,16 @@ type {{.Name}}Diff struct {
 		Del map[{{.KeyType}}]struct{}
 		{{- end}}
 		{{- else if eq .Category "mapAlias"}}
-		Value {{.Type}}Diff
+		Value {{.Type}}Diff{{$.Suffix}}
 		{{- else if eq .Category "struct"}}
-		Value {{.Type}}Diff
+		Value {{.Type}}Diff{{$.Suffix}}
 		{{- end}}
 	}
 {{- end}}
 }
 
 // IsEmpty returns true if no fields have been changed.
-func (d {{.Name}}Diff) IsEmpty() bool {
+func (d {{.Name}}Diff{{.Suffix}}) IsEmpty() bool {
 	return {{range $i, $f := .Fields}}{{if $i}} &&
 		{{end}}d.{{.Name}} == nil{{- end}}
 }

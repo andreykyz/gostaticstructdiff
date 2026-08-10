@@ -81,6 +81,7 @@ Options:
 - `-struct`: Specific struct to generate (default: all)
 - `-tag`: Tag key to look for (default: `structtomap`)
 - `-all`: Include all fields regardless of tags (default: false)
+- `-suffix`: Suffix appended to generated type/function names (CamelCase) and output filename
 - `-verbose`: Enable verbose logging
 - `-version`: Show version
 

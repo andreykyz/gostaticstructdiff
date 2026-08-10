@@ -1,6 +1,6 @@
-// {{.Name}}Patch computes the diff between original and new {{.Name}}.
-func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
-	var diff {{.Name}}Diff
+// {{.Name}}Patch{{.Suffix}} computes the diff between original and new {{.Name}}.
+func {{.Name}}Patch{{.Suffix}}(original, new {{.Name}}) {{.Name}}Diff{{.Suffix}} {
+	var diff {{.Name}}Diff{{.Suffix}}
 	{{- if .ValueIsStruct}}
 	diff.Add = make(map[{{.KeyType}}]{{.ValueType}})
 	diff.Modify = make(map[{{.KeyType}}]{{.ValueDiffType}})
@@ -13,7 +13,7 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 			diff.Add[k] = v
 		} else if !reflect.DeepEqual(oldV, v) {
 			// modified key, compute diff
-			nestedDiff := {{.ValueType}}Patch(oldV, v)
+			nestedDiff := {{.ValueType}}Patch{{.Suffix}}(oldV, v)
 			diff.Modify[k] = nestedDiff
 		}
 	}
@@ -24,7 +24,7 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 		}
 	}
 	if len(diff.Add) == 0 && len(diff.Modify) == 0 && len(diff.Del) == 0 {
-		diff = {{.Name}}Diff{}
+		diff = {{.Name}}Diff{{.Suffix}}{}
 	}
 	{{- else}}
 	diff.Add = make(map[{{.KeyType}}]{{.ValueType}})
@@ -43,14 +43,14 @@ func {{.Name}}Patch(original, new {{.Name}}) {{.Name}}Diff {
 		}
 	}
 	if len(diff.Add) == 0 && len(diff.Del) == 0 {
-		diff = {{.Name}}Diff{}
+		diff = {{.Name}}Diff{{.Suffix}}{}
 	}
 	{{- end}}
 	return diff
 }
 
-// Apply{{.Name}}Diff applies a diff to an original {{.Name}}.
-func Apply{{.Name}}Diff(original {{.Name}}, diff {{.Name}}Diff) {{.Name}} {
+// Apply{{.Name}}Diff{{.Suffix}} applies a diff to an original {{.Name}}.
+func Apply{{.Name}}Diff{{.Suffix}}(original {{.Name}}, diff {{.Name}}Diff{{.Suffix}}) {{.Name}} {
 	if original == nil {
 		original = make({{.Name}})
 	}

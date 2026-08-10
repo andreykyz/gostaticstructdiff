@@ -26,7 +26,7 @@ func TestGenerate_SimpleStruct(t *testing.T) {
 		},
 	}
 
-	code, err := Generate([]parser.StructInfo{si}, "models", nil, "0.1.0", nil, false)
+	code, err := Generate([]parser.StructInfo{si}, "models", nil, "0.1.0", nil, false, "")
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestGenerate_SimpleStruct(t *testing.T) {
 }
 
 func TestGenerate_EmptyStructs(t *testing.T) {
-	code, err := Generate([]parser.StructInfo{}, "empty", nil, "0.1.0", nil, false)
+	code, err := Generate([]parser.StructInfo{}, "empty", nil, "0.1.0", nil, false, "")
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestGenerate_WithImports(t *testing.T) {
 		},
 	}
 	imports := []string{"fmt", "time"}
-	code, err := Generate([]parser.StructInfo{si}, "pkg", imports, "0.1.0", nil, false)
+	code, err := Generate([]parser.StructInfo{si}, "pkg", imports, "0.1.0", nil, false, "")
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestConvertToTemplateData(t *testing.T) {
 			},
 		},
 	}
-	data := convertToTemplateData(si, nil, nil)
+	data := convertToTemplateData(si, nil, nil, "")
 	if data.Name != "Test" {
 		t.Errorf("expected Name Test, got %s", data.Name)
 	}
@@ -125,5 +125,64 @@ func TestConvertToTemplateData(t *testing.T) {
 	}
 	if f.KeyType != "string" || f.ValueType != "int" {
 		t.Errorf("expected key type string and value type int, got %s, %s", f.KeyType, f.ValueType)
+	}
+}
+
+func TestGenerate_WithSuffix(t *testing.T) {
+	si := parser.StructInfo{
+		Name: "User",
+		Fields: []parser.FieldInfo{
+			{
+				Name:     "ID",
+				Type:     "int",
+				TypeExpr: &ast.Ident{Name: "int"},
+			},
+		},
+	}
+
+	code, err := Generate([]parser.StructInfo{si}, "models", nil, "0.1.0", nil, false, "my_suffix")
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	// Diff struct type should be suffixed with CamelCase suffix.
+	if !strings.Contains(code, "type UserDiffMySuffix struct") {
+		t.Error("generated code missing suffixed UserDiffMySuffix struct")
+	}
+	// Original struct name must remain unchanged in signatures.
+	if !strings.Contains(code, "func UserPatchMySuffix(original, new User) UserDiffMySuffix") {
+		t.Error("generated code missing suffixed UserPatchMySuffix function")
+	}
+	if !strings.Contains(code, "func ApplyUserDiffMySuffix(original User, diff UserDiffMySuffix) User") {
+		t.Error("generated code missing suffixed ApplyUserDiffMySuffix function")
+	}
+	// IsEmpty receiver should be suffixed.
+	if !strings.Contains(code, "func (d UserDiffMySuffix) IsEmpty() bool") {
+		t.Error("generated code missing suffixed IsEmpty receiver")
+	}
+	// Ensure unsuffixed names are NOT present.
+	if strings.Contains(code, "type UserDiff struct") {
+		t.Error("generated code should not contain unsuffixed UserDiff struct")
+	}
+	if strings.Contains(code, "func UserPatch(") {
+		t.Error("generated code should not contain unsuffixed UserPatch function")
+	}
+}
+
+func TestToCamelCase(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"", ""},
+		{"my_suffix", "MySuffix"},
+		{"my-suffix", "MySuffix"},
+		{"Foo", "Foo"},
+		{"foo_bar_baz", "FooBarBaz"},
+	}
+	for _, c := range cases {
+		if got := toCamelCase(c.in); got != c.want {
+			t.Errorf("toCamelCase(%q) = %q, want %q", c.in, got, c.want)
+		}
 	}
 }

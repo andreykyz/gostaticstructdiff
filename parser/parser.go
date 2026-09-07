@@ -5,6 +5,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,6 +22,9 @@ type FieldInfo struct {
 type StructInfo struct {
 	Name   string
 	Fields []FieldInfo
+	// SourceDir is the directory of the Go file this struct was parsed from. It is used
+	// to resolve same-package type definitions in sibling files for classification.
+	SourceDir string
 }
 
 // ParseOptions configures parsing behavior.
@@ -113,8 +118,9 @@ func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []s
 		}
 
 		structs = append(structs, StructInfo{
-			Name:   typeSpec.Name.Name,
-			Fields: fields,
+			Name:      typeSpec.Name.Name,
+			Fields:    fields,
+			SourceDir: filepath.Dir(filename),
 		})
 		return true
 	})
@@ -135,6 +141,125 @@ func ParseFileWithOptions(filename string, opts ParseOptions) ([]StructInfo, []s
 	}
 
 	return structs, imports, typeDefs, nil
+}
+
+// ParsePackageTypeDefs parses sibling .go files in the same directory as inputFile and
+// returns their type definitions (keyed by type name), for use in classification.
+// It excludes *_test.go, *_diff*.go (generated diff artifacts), the input file itself,
+// and files whose package clause differs from the package of inputFile.
+// Resolution failures for individual sibling files are non-fatal; only a failure to
+// read the input file's own package clause returns an error.
+func ParsePackageTypeDefs(inputFile string, verbose bool) (map[string]ast.Expr, error) {
+	dir := filepath.Dir(inputFile)
+
+	// Determine the package name of the input file.
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, inputFile, nil, parser.PackageClauseOnly)
+	if err != nil {
+		return nil, fmt.Errorf("parse package clause of %s: %w", inputFile, err)
+	}
+	pkgName := node.Name.Name
+
+	typeDefs := make(map[string]ast.Expr)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("read directory %s: %w", dir, err)
+	}
+
+	base := filepath.Base(inputFile)
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") {
+			continue
+		}
+		if name == base {
+			continue
+		}
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		if strings.HasSuffix(name, "_diff.go") || strings.Contains(name, "_diff_") {
+			continue
+		}
+
+		filePath := filepath.Join(dir, name)
+		fs := token.NewFileSet()
+		fileNode, perr := parser.ParseFile(fs, filePath, nil, parser.ParseComments)
+		if perr != nil {
+			if verbose {
+				fmt.Printf("  Warning: could not parse sibling file %s: %v\n", filePath, perr)
+			}
+			continue
+		}
+		if fileNode.Name.Name != pkgName {
+			continue
+		}
+
+		ast.Inspect(fileNode, func(n ast.Node) bool {
+			typeSpec, ok := n.(*ast.TypeSpec)
+			if !ok {
+				return true
+			}
+			if _, exists := typeDefs[typeSpec.Name.Name]; !exists {
+				typeDefs[typeSpec.Name.Name] = typeSpec.Type
+			}
+			return true
+		})
+	}
+
+	return typeDefs, nil
+}
+
+// ParsePackageTypeDefsInDir parses sibling .go files in the given directory that belong to
+// pkgName and returns their type definitions (keyed by type name), for use in classification.
+// It excludes *_test.go and *_diff*.go (generated diff artifacts), as well as files whose
+// package clause differs from pkgName. Resolution failures for individual sibling files are
+// non-fatal; only a failure to read the directory returns an error.
+func ParsePackageTypeDefsInDir(dir, pkgName string, verbose bool) (map[string]ast.Expr, error) {
+	typeDefs := make(map[string]ast.Expr)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("read directory %s: %w", dir, err)
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") {
+			continue
+		}
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		if strings.HasSuffix(name, "_diff.go") || strings.Contains(name, "_diff_") {
+			continue
+		}
+
+		filePath := filepath.Join(dir, name)
+		fs := token.NewFileSet()
+		fileNode, perr := parser.ParseFile(fs, filePath, nil, parser.ParseComments)
+		if perr != nil {
+			if verbose {
+				fmt.Printf("  Warning: could not parse sibling file %s: %v\n", filePath, perr)
+			}
+			continue
+		}
+		if fileNode.Name.Name != pkgName {
+			continue
+		}
+
+		ast.Inspect(fileNode, func(n ast.Node) bool {
+			typeSpec, ok := n.(*ast.TypeSpec)
+			if !ok {
+				return true
+			}
+			if _, exists := typeDefs[typeSpec.Name.Name]; !exists {
+				typeDefs[typeSpec.Name.Name] = typeSpec.Type
+			}
+			return true
+		})
+	}
+
+	return typeDefs, nil
 }
 
 // extractFields extracts fields from a struct type that have structtomap tags.

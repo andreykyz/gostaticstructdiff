@@ -125,3 +125,53 @@ func TestParseFile_InvalidFile(t *testing.T) {
 		t.Error("expected error for nonexistent file")
 	}
 }
+
+func TestParsePackageTypeDefsInDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	write := func(name, content string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(tmpDir, name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Included: same package, non-test, non-generated.
+	write("a.go", `package p
+
+type VMLocks map[string]int
+type Wrapped string
+`)
+	// Excluded: _test.go
+	write("b_test.go", `package p
+
+type FromTest struct{}
+`)
+	// Excluded: generated diff artifact.
+	write("c_diff.go", `package p
+
+type FromDiff struct{}
+`)
+	// Excluded: different package clause.
+	write("d_otherpkg.go", `package other
+
+type FromOther struct{}
+`)
+
+	typeDefs, err := ParsePackageTypeDefsInDir(tmpDir, "p", false)
+	if err != nil {
+		t.Fatalf("ParsePackageTypeDefsInDir failed: %v", err)
+	}
+
+	if _, ok := typeDefs["VMLocks"]; !ok {
+		t.Errorf("expected VMLocks to be resolved from sibling file")
+	}
+	if _, ok := typeDefs["Wrapped"]; !ok {
+		t.Errorf("expected Wrapped to be resolved from sibling file")
+	}
+	for _, excluded := range []string{"FromTest", "FromDiff", "FromOther"} {
+		if _, ok := typeDefs[excluded]; ok {
+			t.Errorf("did not expect %s to be resolved (should be excluded)", excluded)
+		}
+	}
+}

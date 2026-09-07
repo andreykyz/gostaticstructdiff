@@ -2,6 +2,8 @@ package generator
 
 import (
 	"go/ast"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -184,5 +186,63 @@ func TestToCamelCase(t *testing.T) {
 		if got := toCamelCase(c.in); got != c.want {
 			t.Errorf("toCamelCase(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+// TestGenerate_CrossFileMapAlias verifies that a struct field whose type is a map alias
+// defined in a sibling file of the same package is classified as a map alias and generates
+// the map-alias diff pattern (calling the alias's Patch/Apply functions) rather than a
+// direct `!=` comparison.
+func TestGenerate_CrossFileMapAlias(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Sibling file that defines the map alias (NOT part of the parsed input below).
+	sibling := `package fixtures
+
+type VMLocks map[string]int
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "types.go"), []byte(sibling), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The parsed input file: references VMLocks, which is defined in types.go.
+	input := `package fixtures
+
+type Cluster struct {
+	VMLocks VMLocks ` + "`diff:\"vm_locks\"`" + `
+}
+`
+	inputFile := filepath.Join(tmpDir, "cluster.go")
+	if err := os.WriteFile(inputFile, []byte(input), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	structs, imports, typeDefs, err := parser.ParseFileWithOptions(inputFile, parser.ParseOptions{
+		TagKey:     "diff",
+		IncludeAll: true,
+	})
+	if err != nil {
+		t.Fatalf("ParseFileWithOptions failed: %v", err)
+	}
+	if len(structs) != 1 {
+		t.Fatalf("expected 1 struct, got %d", len(structs))
+	}
+
+	code, err := Generate(structs, "fixtures", imports, "0.1.0", typeDefs, false, "")
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	// The field must be classified as a map alias: it should call VMLocksPatch and reference
+	// VMLocksDiffCluster instead of comparing with !=.
+	if !strings.Contains(code, "VMLocksNestedDiff := VMLocksPatch(original.VMLocks, new.VMLocks)") {
+		t.Errorf("expected map-alias patch pattern referencing VMLocksPatch, got:\n%s", code)
+	}
+	if strings.Contains(code, "original.VMLocks != new.VMLocks") {
+		t.Errorf("did not expect direct != comparison for map alias field, got:\n%s", code)
+	}
+	// Apply must route through the alias's Apply function.
+	if !strings.Contains(code, "result.VMLocks = ApplyVMLocksDiff(original.VMLocks, diff.VMLocks.Value)") {
+		t.Errorf("expected map-alias apply pattern referencing ApplyVMLocksDiff, got:\n%s", code)
 	}
 }

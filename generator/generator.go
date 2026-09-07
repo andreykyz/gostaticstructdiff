@@ -120,11 +120,47 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 		}
 	}
 
+	// classificationTypeDefs extends typeDefs (local + import-resolved) with same-package
+	// sibling-file type definitions so that unqualified references to named types defined in
+	// another file of the same package (e.g. map aliases) are classified correctly.
+	// It is used only for classifying fields; standalone map-alias diff generation remains
+	// bound to typeDefs (local types) to avoid re-emitting a map alias's diff type into every
+	// generated file.
+	classificationTypeDefs := make(map[string]ast.Expr, len(typeDefs))
+	for name, underlying := range typeDefs {
+		classificationTypeDefs[name] = underlying
+	}
+	// Extend with same-package sibling-file type definitions so that unqualified references
+	// to named types defined in another file of the same package (e.g. map aliases) are
+	// classified correctly. Only used for classifying fields; standalone map-alias diff
+	// generation stays bound to typeDefs (local types) to avoid re-emitting a map alias's
+	// diff type into every generated file.
+	seenDirs := make(map[string]bool)
+	for _, s := range structs {
+		dir := s.SourceDir
+		if dir == "" || seenDirs[dir] {
+			continue
+		}
+		seenDirs[dir] = true
+		siblings, serr := parser.ParsePackageTypeDefsInDir(dir, packageName, verbose)
+		if serr != nil {
+			if verbose {
+				fmt.Printf("  Warning: could not resolve package type definitions in %s: %v\n", dir, serr)
+			}
+			continue
+		}
+		for name, underlying := range siblings {
+			if _, exists := classificationTypeDefs[name]; !exists {
+				classificationTypeDefs[name] = underlying
+			}
+		}
+	}
+
 	// Determine if we need reflect import
 	needsReflect := false
 	for _, s := range structs {
 		for _, f := range s.Fields {
-			typeInfo := types.Classify(f.TypeExpr, knownStructs, typeDefs)
+			typeInfo := types.Classify(f.TypeExpr, knownStructs, classificationTypeDefs)
 			if typeInfo.Category == types.CategorySlice || typeInfo.Category == types.CategoryMap || typeInfo.Category == types.CategoryMapAlias || typeInfo.Category == types.CategoryUnknown {
 				needsReflect = true
 				break
@@ -187,7 +223,7 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 		if verbose {
 			fmt.Printf("  Generating diff for struct %s (%d fields)\n", s.Name, len(s.Fields))
 		}
-		data := convertToTemplateData(s, knownStructs, typeDefs, camelSuffix)
+		data := convertToTemplateData(s, knownStructs, classificationTypeDefs, camelSuffix)
 		err = tmpl.ExecuteTemplate(&output, "struct_diff.go.tmpl", data)
 		if err != nil {
 			return "", fmt.Errorf("failed to execute struct template for %s: %w", s.Name, err)

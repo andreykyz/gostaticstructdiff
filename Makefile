@@ -30,6 +30,7 @@ generate_example: build
 	./$(BINARY_NAME) -input $(MODELS_DIR)/user.go -verbose
 	./$(BINARY_NAME) -input $(MODELS_DIR)/metadata.go -verbose
 	./$(BINARY_NAME) -input $(MODELS_DIR)/nested/id.go -verbose
+	goimports -w $(MODELS_DIR)/nested/id_diff.go
 
 
 

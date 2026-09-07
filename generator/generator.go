@@ -135,6 +135,12 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 	// classified correctly. Only used for classifying fields; standalone map-alias diff
 	// generation stays bound to typeDefs (local types) to avoid re-emitting a map alias's
 	// diff type into every generated file.
+	//
+	// Only sibling MAP ALIAS types are merged. Struct types are intentionally excluded:
+	// resolving a named struct through typeDefs expands it to an inline struct string (and
+	// the referenced nested diff type may live in another generated file), which can emit
+	// invalid anonymous-struct Diff types. Map aliases are safe because the field is
+	// rendered by delegating to the alias's generated Patch/Apply functions.
 	seenDirs := make(map[string]bool)
 	for _, s := range structs {
 		dir := s.SourceDir
@@ -151,7 +157,9 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 		}
 		for name, underlying := range siblings {
 			if _, exists := classificationTypeDefs[name]; !exists {
-				classificationTypeDefs[name] = underlying
+				if _, ok := underlying.(*ast.MapType); ok {
+					classificationTypeDefs[name] = underlying
+				}
 			}
 		}
 	}

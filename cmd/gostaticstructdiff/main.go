@@ -11,7 +11,7 @@ import (
 	"github.com/andreykyz/gostaticstructdiff/parser"
 )
 
-const version = "0.1.10"
+const version = "0.1.11"
 
 func main() {
 	// Define command-line flags
@@ -178,7 +178,7 @@ func processFiles(inputFiles []string, outputFile, structName, tagKey string, in
 	}
 
 	// Write output file
-	if err := os.WriteFile(outputFile, []byte(code), 0644); err != nil {
+	if err := os.WriteFile(outputFile, []byte(code), 0o644); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 

@@ -21,6 +21,8 @@ type ComplexStruct struct {
 	Users []models.User `structtomap:"users"`
 	// Map of string to Metadata struct (nested)
 	Metadata map[string]models.Metadata `structtomap:"metadata"`
+	// Map of string to Metadata struct (nested)
+	MetadataLocalKey map[Key1]Metadata1 `structtomap:"metadata_local_key"`
 	// Map of string to Metadata struct (nested) with array
 	NestedMapArray map[string]models.Metadata `yaml:"storages" diff:"storages" node_diff:"storages" structtomap:"nested_map_array"`
 	// alias of Map of struct (nested)
@@ -43,4 +45,10 @@ type ComplexStruct struct {
 
 type NestedArray struct {
 	NestedStringArray []string `structtomap:"value"`
+}
+
+type Key1 string
+
+type Metadata1 struct {
+	ID int `structtomap:"id"`
 }

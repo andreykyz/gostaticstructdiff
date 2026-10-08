@@ -113,7 +113,16 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 	if typeDefs == nil {
 		typeDefs = make(map[string]ast.Expr)
 	}
-	importTypeDefs := resolveImportTypeDefs(imports, verbose)
+	// 'go list' resolves imports relative to the module of the working directory,
+	// so run it in the directory of the parsed input file (not the tool's CWD).
+	resolveDir := ""
+	for _, s := range structs {
+		if s.SourceDir != "" {
+			resolveDir = s.SourceDir
+			break
+		}
+	}
+	importTypeDefs := resolveImportTypeDefs(imports, resolveDir, verbose)
 	for name, underlying := range importTypeDefs {
 		if _, exists := typeDefs[name]; !exists {
 			typeDefs[name] = underlying
@@ -281,7 +290,9 @@ func Generate(structs []parser.StructInfo, packageName string, imports []string,
 // their Go source files to extract type definitions for wrapped primitives
 // (type aliases to basic types like 'type GGID string').
 // This enables correct classification of cross-package type aliases.
-func resolveImportTypeDefs(imports []string, verbose bool) map[string]ast.Expr {
+// workDir is the directory used to run 'go list' (should be the input file's
+// directory so imports resolve against the input's module); empty means CWD.
+func resolveImportTypeDefs(imports []string, workDir string, verbose bool) map[string]ast.Expr {
 	typeDefs := make(map[string]ast.Expr)
 
 	for _, imp := range imports {
@@ -293,6 +304,9 @@ func resolveImportTypeDefs(imports []string, verbose bool) map[string]ast.Expr {
 
 		// Use 'go list' to find the package directory
 		cmd := exec.Command("go", "list", "-find", "-json", imp)
+		if workDir != "" {
+			cmd.Dir = workDir
+		}
 		output, err := cmd.Output()
 		if err != nil {
 			if verbose {
@@ -419,9 +433,16 @@ func convertToTemplateData(s parser.StructInfo, knownStructs map[string]bool, ty
 			IsAnonymous: isAnonymous,
 		}
 
-		// For map types, extract key and value types
 		if (typeInfo.Category == types.CategoryMap || typeInfo.Category == types.CategoryMapAlias) && typeInfo.Key != nil && typeInfo.Value != nil {
 			fieldData.KeyType = typeInfo.Key.TypeString
+			if mt, ok := f.TypeExpr.(*ast.MapType); ok {
+				if ident, ok := mt.Key.(*ast.Ident); ok && !isBasicTypeName(ident.Name) {
+					fieldData.KeyType = ident.Name
+				}
+			}
+			// // For map types, extract key and value types
+			// if (typeInfo.Category == types.CategoryMap || typeInfo.Category == types.CategoryMapAlias) && typeInfo.Key != nil && typeInfo.Value != nil {
+			// 	fieldData.KeyType = typeInfo.Key.TypeString
 			fieldData.ValueType = typeInfo.Value.TypeString
 			if typeInfo.Value.Category == types.CategoryStruct {
 				fieldData.ValueIsStruct = true
